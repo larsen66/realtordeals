@@ -1,4 +1,4 @@
-import { tagsFor, type CardRole, type DealType } from "@rieltordeals/domain";
+import { paymentSelectionSchema, tagsFor, type CardRole, type DealType } from "@rieltordeals/domain";
 import type { CardDto, CardInsert } from "./types.js";
 
 export type CardRow = {
@@ -12,7 +12,7 @@ export type CardRow = {
   source: string | null;
   budget: string | null;
   temperature: CardDto["temperature"];
-  payment: CardDto["payment"];
+  payment: "cash" | "mortgage" | null;
   stage: CardDto["stage"];
   selection_status: CardDto["selectionStatus"];
   referral_status: CardDto["referralStatus"];
@@ -36,7 +36,7 @@ export function cardFromRow(row: CardRow): CardDto {
     source: row.source,
     budget: row.budget,
     temperature: row.temperature,
-    payment: row.payment,
+    payment: paymentSelectionSchema.parse(row.fields.paymentMethods ?? row.payment),
     stage: row.stage,
     selectionStatus: row.selection_status,
     referralStatus: row.referral_status,
@@ -61,13 +61,13 @@ export function cardToInsertRow(input: CardInsert) {
     source: input.source,
     budget: input.budget,
     temperature: input.temperature,
-    payment: input.payment,
+    payment: input.payment.find((value) => value === "cash" || value === "mortgage") ?? null,
     stage: input.stage,
     selection_status: input.selectionStatus,
     referral_status: input.referralStatus,
     birthday: input.birthday,
     source_text: input.sourceText,
     promised_call_at: input.promisedCallAt,
-    fields: input.fields,
+    fields: { ...input.fields, paymentMethods: input.payment },
   };
 }

@@ -25,7 +25,7 @@ export function toCardInsert(
     source: parsed.source ?? null,
     budget: parsed.budget ?? null,
     temperature: parsed.temperature ?? null,
-    payment: parsed.payment ?? null,
+    payment: parsed.payment,
     stage: parsed.stage,
     selectionStatus: parsed.selectionStatus,
     referralStatus: parsed.referralStatus,

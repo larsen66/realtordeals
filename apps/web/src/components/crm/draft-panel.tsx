@@ -77,7 +77,7 @@ export function DraftPanel({ card }: { card: Card | null }) {
           />
         </div>
         <label className="grid gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Комментарий из Telegram</span>
+          <span className="text-[11px] text-muted-foreground">Комментарий о клиенте</span>
           <div className="min-h-20 rounded-lg border border-border bg-muted/40 px-3 py-2 text-[13px] leading-5 text-foreground">
             {card.sourceText}
           </div>

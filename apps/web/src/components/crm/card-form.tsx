@@ -2,7 +2,6 @@
 
 import {
   finishLabels,
-  paymentLabels,
   referralStatusLabels,
   roleLabels,
   selectionStatusLabels,
@@ -33,6 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createCard, toDateTimeLocal, updateCard, type Card } from "@/lib/cards";
+import { formatBudget } from "@/lib/budget";
+import { PaymentOptions } from "./payment-options";
 import { Field } from "./field";
 import { CardPanelContext } from "./card-panel";
 
@@ -47,14 +48,14 @@ function fromCard(card?: Card, initialRole: CardRole = "buyer") {
   return {
     role: (card?.role ?? initialRole) as CardRole,
     dealType: (card?.dealType ?? (initialRole === "seller" ? "sale" : "purchase")) as DealType,
-    phone: card?.phone ?? "",
+    phone: card?.phone ?? "+7",
     name: card?.name ?? "",
     objectType: card?.objectType ?? "",
     address: card?.address ?? "",
     source: card?.source ?? "",
-    budget: card?.budget ?? "",
+    budget: formatBudget(card?.budget ?? ""),
     temperature: (card?.temperature ?? "") as Temperature | "",
-    payment: (card?.payment ?? "") as Payment | "",
+    payment: card?.payment ?? [] as Payment[],
     stage: (card?.stage ?? (initialRole === "buyer" ? "selection" : "")) as BuyerStage | "",
     selectionStatus: (card?.selectionStatus ?? "") as SelectionStatus | "",
     referralStatus: (card?.referralStatus ?? "") as ReferralStatus | "",
@@ -107,6 +108,10 @@ export function CardForm({ card, initialRole }: Props) {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (state.phone.trim() === "+7") {
+      setError("Введите номер телефона полностью");
+      return;
+    }
     setPending(true);
     setError(null);
 
@@ -120,7 +125,7 @@ export function CardForm({ card, initialRole }: Props) {
       source: state.source || null,
       budget: state.budget || null,
       temperature: state.temperature || null,
-      payment: state.payment || null,
+      payment: state.payment,
       stage: state.role === "buyer" ? state.stage || undefined : null,
       selectionStatus:
         state.role === "buyer" && state.stage === "selection"
@@ -300,37 +305,31 @@ export function CardForm({ card, initialRole }: Props) {
           </Field>
           <Field label="Бюджет">
             <Input
+              inputMode="decimal"
               value={state.budget}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  budget: event.target.value,
-                }))
-              }
+              onChange={(event) => {
+                const input = event.currentTarget;
+                const raw = input.value;
+                const budget = formatBudget(raw);
+                const beforeCursor = raw.slice(0, input.selectionStart ?? raw.length).replace(/\s/g, "").length;
+                setState((current) => ({ ...current, budget }));
+                if (budget !== raw) {
+                  let cursor = 0;
+                  let characters = 0;
+                  while (cursor < budget.length && characters < beforeCursor) {
+                    if (!/\s/.test(budget[cursor])) characters++;
+                    cursor++;
+                  }
+                  requestAnimationFrame(() => input.setSelectionRange(cursor, cursor));
+                }
+              }}
             />
           </Field>
           <Field label="Оплата">
-            <Select
-              value={state.payment || "none"}
-              onValueChange={(value) =>
-                setState((current) => ({
-                  ...current,
-                  payment: value === "none" ? "" : (value as Payment),
-                }))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="не задана" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">не задана</SelectItem>
-                {Object.entries(paymentLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PaymentOptions
+              value={state.payment}
+              onChange={(payment) => setState((current) => ({ ...current, payment }))}
+            />
           </Field>
           <Field label="Этап">
             <Select
@@ -620,7 +619,7 @@ export function CardForm({ card, initialRole }: Props) {
         </section>
       )}
 
-      <Field label="Исходный текст">
+      <Field label="Комментарий о клиенте">
         <Textarea
           rows={5}
           value={state.sourceText}

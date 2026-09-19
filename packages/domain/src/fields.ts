@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CardRole } from "./enums.js";
 import { finishSchema, whoseApartmentSchema } from "./enums.js";
+import { paymentSelectionSchema } from "./payments.js";
 import { cardTaskSchema } from "./tasks.js";
 
 const optionalText = z.preprocess((value) => {
@@ -23,6 +24,7 @@ const optionalBoolean = z.preprocess((value) => {
 
 export const sellerFieldsSchema = z
   .object({
+    paymentMethods: paymentSelectionSchema.optional(),
     tasks: cardTaskSchema.array().optional(),
     price: optionalText,
     rooms: optionalText,
@@ -45,6 +47,7 @@ export const sellerFieldsSchema = z
 
 export const buyerFieldsSchema = z
   .object({
+    paymentMethods: paymentSelectionSchema.optional(),
     tasks: cardTaskSchema.array().optional(),
     selectionNotes: optionalText,
     selectionLinks: optionalText,

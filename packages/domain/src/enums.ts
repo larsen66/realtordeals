@@ -3,7 +3,7 @@ import { z } from "zod";
 export const cardRoleSchema = z.enum(["seller", "buyer"]);
 export const dealTypeSchema = z.enum(["sale", "purchase"]);
 export const temperatureSchema = z.enum(["cold", "warm", "hot"]);
-export const paymentSchema = z.enum(["cash", "mortgage"]);
+export const paymentSchema = z.enum(["cash", "mortgage", "installment"]);
 export const buyerStageSchema = z.enum([
   "selection",
   "viewing",

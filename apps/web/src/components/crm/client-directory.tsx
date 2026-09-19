@@ -97,7 +97,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
   const matching = cards.filter((card) => {
     const fullQuery = [fieldString(card, "purchaseWhat"), fieldString(card, "location"), fieldString(card, "layout")].filter(Boolean).join(" ").toLocaleLowerCase("ru");
     return (!query || matchesQuery(card, query) || fullQuery.includes(query.toLocaleLowerCase("ru"))) &&
-      (!payment || card.payment === payment) &&
+      (!payment || card.payment.some((value) => value === payment)) &&
       (!stage || fixedStage || card.stage === stage) &&
       (!source || card.source === source) &&
       (!objectType || card.objectType === objectType) &&

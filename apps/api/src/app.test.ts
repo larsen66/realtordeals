@@ -1,3 +1,6 @@
+import { cardFromRow, cardToInsertRow } from "./cards/map.js";
+import { parseNewCard } from "./cards/input.js";
+import type { CardDto } from "./cards/types.js";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { after, test } from "node:test";
@@ -329,4 +332,47 @@ test("clearing the buyer stage persists no selection or referral substatus", asy
 
 after(() => {
   server.close();
+});
+
+test("payment methods support multiple choices, clearing, legacy values, and preserve card details", async () => {
+  const created = await request("/cards", "POST", {
+    role: "buyer", dealType: "purchase", phone: "+79990009999",
+    payment: ["installment", "cash", "mortgage", "cash"],
+    fields: { purchaseWhat: "Квартира", selectionNotes: "Сохранить подборку" },
+  });
+  assert.equal(created.status, 201);
+  const card = created.body.card;
+  assert.deepEqual(card.payment, ["cash", "mortgage", "installment"]);
+  assert.deepEqual(card.fields.paymentMethods, card.payment);
+  await request(`/cards/${card.id}/tasks`, "POST", { type: "call", title: "Звонок" });
+  for (const payment of [["cash", "installment"], ["installment"], [], "mortgage", null]) {
+    const updated = await request(`/cards/${card.id}`, "PATCH", { payment });
+    assert.equal(updated.status, 200);
+    const expected = payment === null ? [] : typeof payment === "string" ? [payment] : payment;
+    const saved = await request(`/cards/${card.id}`, "GET");
+    assert.deepEqual(saved.body.card.payment, expected);
+    assert.deepEqual(saved.body.card.fields.paymentMethods, expected);
+    assert.equal(saved.body.card.fields.purchaseWhat, "Квартира");
+    assert.equal(saved.body.card.fields.selectionNotes, "Сохранить подборку");
+    assert.equal(saved.body.card.fields.tasks.length, 1);
+  }
+  const invalid = await request(`/cards/${card.id}`, "PATCH", { payment: ["cash", "unknown"] });
+  assert.equal(invalid.status, 400);
+  const saved = await request(`/cards/${card.id}`, "GET");
+  assert.deepEqual(saved.body.card.payment, []);
+  const statuses = await request("/statuses", "GET");
+  assert.deepEqual(statuses.body.payments.map((item: { value: string }) => item.value), ["cash", "mortgage", "installment"]);
+});
+
+test("Supabase rows retain all payment choices and read old single-choice cards", () => {
+  const insert = parseNewCard({ role: "buyer", dealType: "purchase", phone: "+79990009999", payment: ["cash", "mortgage", "installment"] });
+  const base = { id: "test-id", created_at: "2026-09-19T00:00:00Z", updated_at: "2026-09-19T00:00:00Z" };
+  for (const payment of [["cash", "mortgage", "installment"], ["installment"], []] as CardDto["payment"][]) {
+    const row = { ...cardToInsertRow({ ...insert, payment }), ...base };
+    assert.ok(row.payment === null || row.payment === "cash" || row.payment === "mortgage");
+    assert.deepEqual(cardFromRow(row).payment, payment);
+  }
+  const legacyRow = { ...cardToInsertRow(insert), ...base, payment: "mortgage" as const, fields: {} };
+  assert.deepEqual(cardFromRow(legacyRow).payment, ["mortgage"]);
+  assert.deepEqual(cardFromRow({ ...legacyRow, fields: { paymentMethods: [] } }).payment, []);
 });

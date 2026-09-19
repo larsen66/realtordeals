@@ -22,7 +22,7 @@ export type Card = {
   source: string | null;
   budget: string | null;
   temperature: Temperature | null;
-  payment: Payment | null;
+  payment: Payment[];
   stage: BuyerStage | null;
   selectionStatus: SelectionStatus | null;
   referralStatus: ReferralStatus | null;

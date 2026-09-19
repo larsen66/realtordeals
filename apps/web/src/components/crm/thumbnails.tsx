@@ -75,9 +75,9 @@ export function BuyerThumbnails({ cards }: { cards: Card[] }) {
                   {temperatureLabels[card.temperature]}
                 </Badge>
               ) : null}
-              {card.payment ? (
-                <Badge variant="secondary">{paymentLabels[card.payment]}</Badge>
-              ) : null}
+              {card.payment.map((payment) => (
+                <Badge key={payment} variant="secondary">{paymentLabels[payment]}</Badge>
+              ))}
               {card.stage ? (
                 <Badge variant="outline">{stageLabels[card.stage]}</Badge>
               ) : null}
