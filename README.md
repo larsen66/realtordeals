@@ -6,6 +6,22 @@
 - Стек: [docs/STACK.md](docs/STACK.md)
 - Правила агента: [AGENTS.md](AGENTS.md)
 
-Кода приложения пока нет.
+## Запуск
 
-Делаем: бот фиксации, лендинг, CRM, очередь в Redis. Голос, текст, фото и ссылка → форма → подтверждение → карточка. Дальше подборка, просмотр, статусы, напоминания.
+```bash
+pnpm install
+pnpm dev
+```
+
+- web: `http://localhost:3000` — `apps/web` (лендинг `/`, CRM `/crm`)
+- api: `http://localhost:3001` — `apps/api`, `GET /health`
+
+## Репозиторий
+
+```
+apps/web          Next.js App Router: лендинг, CRM, карточки
+apps/api          Express: /health, /cards, /leads, /statuses, /files
+apps/bot          grammY — следующий пакет
+apps/worker       Redis — следующий пакет
+packages/domain   схемы форм — следующий пакет
+```

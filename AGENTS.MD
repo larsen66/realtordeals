@@ -36,13 +36,13 @@
 - БД: Supabase. Клиент `@supabase/supabase-js`, без Drizzle.
 - Очередь и фоновые задачи: Redis.
 - Файлы: S3.
-- STT: Groq `whisper-large-v3-turbo`, fallback OpenAI transcribe.
-- Извлечение полей: Vercel AI SDK `generateObject` + Zod. Не LangGraph.
+- STT: OpenRouter `openai/whisper-large-v3-turbo`, fallback `openai/gpt-4o-mini-transcribe`.
+- Извлечение полей: OpenRouter через `@openrouter/ai-sdk-provider` + Vercel AI SDK `generateObject` + Zod. Не LangGraph.
 - Хост: один VPS Timeweb Cloud (Москва), Docker Compose.
 - Мессенджеры: Telegram Bot API. WhatsApp — в плане после Telegram. MAX и прочие API не подключать.
 
 Секреты только в env / secret store.
-Токены бота, Groq, OpenAI, S3, Supabase не писать в git, в markdown и в промпты.
+Токены бота, OpenRouter, S3, Supabase не писать в git, в markdown и в промпты.
 
 ## Что делаем
 

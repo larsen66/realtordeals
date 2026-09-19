@@ -15,8 +15,8 @@
 | Очередь и фоновые задачи | Redis (`apps/worker`): STT, разложение в форму, напоминания, рассылка, фото, парсинг ссылки |
 | База | Supabase (Postgres + Studio). Клиент `@supabase/supabase-js`, без Drizzle |
 | Файлы | S3-совместимое хранилище (Timeweb S3) |
-| Транскрибация | Groq `whisper-large-v3-turbo`, `language=ru` |
-| Извлечение полей | OpenAI structured output через Vercel AI SDK `generateObject` + Zod-схемы форм |
+| Транскрибация | OpenRouter `POST /api/v1/audio/transcriptions`, модель `openai/whisper-large-v3-turbo`, `language=ru` |
+| Извлечение полей | OpenRouter через `@openrouter/ai-sdk-provider` + Vercel AI SDK `generateObject` + Zod-схемы форм |
 | Хостинг | один VPS Timeweb Cloud, Москва, Docker Compose |
 | Мессенджеры | Telegram Bot API. WhatsApp Cloud API / WABA — в плане, после Telegram. Других мессенджерных API нет |
 
@@ -46,14 +46,18 @@ CRM: карточки, статусы, подборки, просмотры. В�
 | Зачем | Что | Как звать |
 | --- | --- | --- |
 | Мессенджер менеджера | Telegram Bot API | grammY, webhook. В группе — `chat_id` + `thread_id` |
-| Голос → текст | Groq Speech to Text | `whisper-large-v3-turbo` |
-| Fallback STT | OpenAI | `gpt-4o-mini-transcribe` |
-| Разложение в форму | OpenAI | structured output, дешёвая chat-модель |
+| Голос → текст | OpenRouter STT | `openai/whisper-large-v3-turbo`, `language=ru` |
+| Fallback STT | OpenRouter STT | `openai/gpt-4o-mini-transcribe` |
+| Разложение в форму | OpenRouter chat | `json_schema` structured output, дешёвая chat-модель |
 | База и Studio | Supabase | таблицы карточек, `@supabase/supabase-js` |
 | Фото карточки | S3 | загрузка и выгрузка с площадки |
 | WhatsApp | Cloud API / WABA | в плане после Telegram: рассылка и ответы в ту же карточку |
 
-STT: в промпт Groq передавать словарь (улицы, ЖК, «маткапитал», «занижение»).
+Один ключ: `OPENROUTER_API_KEY`. Отдельных ключей Groq и OpenAI нет.
+
+STT: словарь (улицы, ЖК, «маткапитал», «занижение») передавать в `provider.options.groq.prompt`. На `/audio/transcriptions` нельзя задать `provider.order` / `only` — провайдера выбирает OpenRouter.
+
+Извлечение полей: модель с `structured_outputs`, в роутинге `require_parameters: true`.
 
 ## Репозиторий
 
