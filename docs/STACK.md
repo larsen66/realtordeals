@@ -14,7 +14,7 @@
 | Telegram | grammY + `@grammyjs/conversations` |
 | Очередь и фоновые задачи | Redis (`apps/worker`): STT, разложение в форму, напоминания, рассылка, фото, парсинг ссылки |
 | База | Supabase (Postgres + Studio). Клиент `@supabase/supabase-js`, без Drizzle |
-| Файлы | S3-совместимое хранилище (Timeweb S3) |
+| Файлы | диск на VPS, отдаёт `apps/api` `/files`. Отдельного object storage нет |
 | Транскрибация | OpenRouter `POST /api/v1/audio/transcriptions`, модель `openai/whisper-large-v3-turbo`, `language=ru` |
 | Извлечение полей | OpenRouter через `@openrouter/ai-sdk-provider` + Vercel AI SDK `generateObject` + Zod-схемы форм |
 | Хостинг | один VPS Timeweb Cloud, Москва, Docker Compose |
@@ -37,7 +37,7 @@
 
 Лендинг: форма заявки пишет ту же карточку покупателя.
 
-CRM: карточки, статусы, подборки, просмотры. Веб и Telegram — два UI одной модели.
+CRM: список `/crm` — миниатюра продавца или покупателя, полная карточка по клику. Веб и Telegram — два UI одной модели.
 
 Топики в группе, рассылка, ссылка на Авито/Циан, фото без водяного знака — часть того же контура, не отдельный продукт.
 
@@ -50,7 +50,6 @@ CRM: карточки, статусы, подборки, просмотры. В�
 | Fallback STT | OpenRouter STT | `openai/gpt-4o-mini-transcribe` |
 | Разложение в форму | OpenRouter chat | `json_schema` structured output, дешёвая chat-модель |
 | База и Studio | Supabase | таблицы карточек, `@supabase/supabase-js` |
-| Фото карточки | S3 | загрузка и выгрузка с площадки |
 | WhatsApp | Cloud API / WABA | в плане после Telegram: рассылка и ответы в ту же карточку |
 
 Один ключ: `OPENROUTER_API_KEY`. Отдельных ключей Groq и OpenAI нет.

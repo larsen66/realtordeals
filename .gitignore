@@ -10,3 +10,5 @@ out
 *.tsbuildinfo
 .turbo
 coverage
+.playwright-cli/
+output/playwright/

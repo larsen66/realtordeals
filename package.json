@@ -3,11 +3,11 @@
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "pnpm --filter web --filter api --parallel dev",
+    "dev": "pnpm --filter @rieltordeals/domain build && pnpm --filter web --filter api --parallel dev",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "build": "pnpm --filter web --filter api build",
+    "build": "pnpm --filter @rieltordeals/domain --filter web --filter api build",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter api test"
+    "test": "pnpm --filter domain --filter api test"
   }
 }
