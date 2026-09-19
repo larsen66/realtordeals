@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { createBot } from "./bot.js";
 import { readConfig } from "./config.js";
 import { HttpCrmGateway } from "./gateways/http.js";
+import { OpenAiAgent } from "@rieltordeals/worker";
+import { CrmExtractor } from "./extraction.js";
 
 async function main() {
   const envFile = fileURLToPath(new URL("../.env.local", import.meta.url));
@@ -12,7 +14,10 @@ async function main() {
   const gateway = config.mode === "demo"
     ? new (await import("./gateways/demo.js")).DemoCrmGateway()
     : new HttpCrmGateway(config.apiUrl!, config.apiToken!);
-  const { bot, close } = createBot(config, gateway);
+  const extractor = config.mode === "api"
+    ? new CrmExtractor(new OpenAiAgent({ apiKey: config.openAiApiKey!, textModel: config.textModel!, transcriptionModel: config.transcriptionModel! }))
+    : undefined;
+  const { bot, close } = createBot(config, gateway, extractor);
   bot.catch(() => console.error("Telegram update failed; details omitted to protect credentials and client data."));
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => {

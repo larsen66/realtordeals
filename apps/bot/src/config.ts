@@ -4,6 +4,9 @@ export type BotConfig = {
   allowedUserIds: ReadonlySet<number>;
   apiUrl?: string;
   apiToken?: string;
+  openAiApiKey?: string;
+  textModel?: string;
+  transcriptionModel?: string;
   maxVoiceBytes: number;
   maxVoiceSeconds: number;
 };
@@ -38,8 +41,13 @@ export function readConfig(env: NodeJS.ProcessEnv): BotConfig {
     }
     const secret = env.CRM_API_TOKEN?.trim();
     if (!secret) throw new Error("Set CRM_API_TOKEN");
+    const openAiApiKey = env.OPENAI_API_KEY?.trim();
+    if (!openAiApiKey) throw new Error("Set OPENAI_API_KEY");
     config.apiUrl = base.replace(/\/$/, "");
     config.apiToken = secret;
+    config.openAiApiKey = openAiApiKey;
+    config.textModel = env.OPENAI_TEXT_MODEL?.trim() || "gpt-4o-mini";
+    config.transcriptionModel = env.OPENAI_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-mini-transcribe";
   }
   return config;
 }

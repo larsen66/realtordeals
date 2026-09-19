@@ -12,6 +12,7 @@
     "demo": "node --import tsx scripts/demo.ts"
   },
   "dependencies": {
+    "@rieltordeals/worker": "workspace:*",
     "grammy": "1.46.0",
     "zod": "4.6.5"
   },

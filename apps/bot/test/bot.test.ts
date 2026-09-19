@@ -128,7 +128,7 @@ test("configuration requires mode, token, allowlist, and secure backend", () => 
   assert.throws(() => readConfig({ ...base, BOT_MODE: undefined }));
   assert.throws(() => readConfig({ ...base, TELEGRAM_ALLOWED_USER_IDS: "" }));
   assert.throws(() => readConfig({ ...base, BOT_MODE: "api", CRM_API_URL: "http://public.example", CRM_API_TOKEN: "secret" }));
-  assert.equal(readConfig({ ...base, BOT_MODE: "api", CRM_API_URL: "http://127.0.0.1:3001", CRM_API_TOKEN: "secret" }).mode, "api");
+  assert.equal(readConfig({ ...base, BOT_MODE: "api", CRM_API_URL: "http://127.0.0.1:3001", CRM_API_TOKEN: "secret", OPENAI_API_KEY: "test" }).mode, "api");
 });
 
 test("queued processing automatically delivers review without confirming", async () => {

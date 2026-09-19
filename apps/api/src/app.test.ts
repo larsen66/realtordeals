@@ -6,6 +6,7 @@ import { createMemoryStore } from "./cards/memory-store.js";
 import { setCardStore } from "./cards/store.js";
 
 setCardStore(createMemoryStore());
+process.env.BOT_API_TOKEN = "test-bot-api-token";
 
 const server = app.listen(0);
 await new Promise<void>((resolve) => {
@@ -110,6 +111,55 @@ test("GET /statuses returns temperatures and stages from domain", async () => {
     body.referralStatuses.map((item) => item.value),
     ["posted", "not_posted"],
   );
+});
+
+test("bot creates a draft, validates phone and saves exactly one CRM card after confirmation", async () => {
+  const headers = {
+    "content-type": "application/json", authorization: "Bearer test-bot-api-token",
+    "x-telegram-user-id": "42", "x-telegram-chat-id": "42",
+  };
+  const created = await fetch(`${baseUrl()}/bot/v1/drafts`, {
+    method: "POST", headers: { ...headers, "idempotency-key": "menu-1" },
+    body: JSON.stringify({ role: "buyer" }),
+  });
+  assert.equal(created.status, 201);
+  const draft = (await created.json()) as { id: string; revision: number; canConfirm: boolean };
+  assert.equal(draft.canConfirm, false);
+  const message = {
+    kind: "text", text: "Учебный текст", messageId: 1, updateId: 1,
+    extraction: { name: "Учебный клиент", phone: "+79990001234", objectType: null, address: null,
+      source: "telegram", budget: "5 млн", temperature: null, payment: "cash", promisedCallAt: null,
+      fields: { purchaseWhat: "Квартира", location: "Краснодар" }, notes: ["Учебные данные"] },
+  };
+  const updated = await fetch(`${baseUrl()}/bot/v1/drafts/${draft.id}/messages`, {
+    method: "POST", headers, body: JSON.stringify(message),
+  });
+  assert.equal(updated.status, 200);
+  const review = (await updated.json()) as { revision: number; canConfirm: boolean; fields: { key: string; value: string | null }[] };
+  assert.equal(review.canConfirm, true);
+  assert.equal(review.fields.find((field) => field.key === "purchaseWhat")?.value, "Квартира");
+  const confirmed = await fetch(`${baseUrl()}/bot/v1/drafts/${draft.id}/confirm`, {
+    method: "POST", headers, body: JSON.stringify({ revision: review.revision, confirmed: true }),
+  });
+  assert.equal(confirmed.status, 200);
+  const saved = (await confirmed.json()) as { cardId: string; status: string };
+  assert.equal(saved.status, "confirmed");
+  assert.ok(saved.cardId);
+  const repeated = await fetch(`${baseUrl()}/bot/v1/drafts/${draft.id}/confirm`, {
+    method: "POST", headers, body: JSON.stringify({ revision: review.revision, confirmed: true }),
+  });
+  assert.equal((await repeated.json() as { cardId: string }).cardId, saved.cardId);
+  const card = await fetch(`${baseUrl()}/cards/${saved.cardId}`);
+  assert.equal(card.status, 200);
+  assert.equal(((await card.json()) as { card: { fields: { purchaseWhat: string } } }).card.fields.purchaseWhat, "Квартира");
+});
+
+test("bot route rejects missing API token and stale confirmation", async () => {
+  assert.equal((await fetch(`${baseUrl()}/bot/v1/drafts/current`)).status, 401);
+  const headers = { "content-type": "application/json", authorization: "Bearer test-bot-api-token", "x-telegram-user-id": "77", "x-telegram-chat-id": "77" };
+  const created = await fetch(`${baseUrl()}/bot/v1/drafts`, { method: "POST", headers: { ...headers, "idempotency-key": "menu-2" }, body: JSON.stringify({ role: "seller" }) });
+  const draft = (await created.json()) as { id: string };
+  assert.equal((await fetch(`${baseUrl()}/bot/v1/drafts/${draft.id}/confirm`, { method: "POST", headers, body: JSON.stringify({ revision: 1, confirmed: true }) })).status, 409);
 });
 
 async function request(path: string, method: string, input?: unknown) {

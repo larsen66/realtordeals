@@ -3,6 +3,7 @@ import { Bot, type Context } from "grammy";
 import type { BotConfig } from "./config.js";
 import { GatewayError, type Actor, type CrmGateway, type Draft, type Role } from "./contract.js";
 import { renderDraft, reviewKeyboard, roleKeyboard } from "./presentation.js";
+import { CrmExtractor } from "./extraction.js";
 
 const actorOf = (ctx: Context): Actor => ({ telegramUserId: ctx.from!.id, chatId: ctx.chat!.id });
 const failureText = (error: unknown) => error instanceof GatewayError && error.code === "conflict"
@@ -11,7 +12,7 @@ const failureText = (error: unknown) => error instanceof GatewayError && error.c
     ? "API не разрешил доступ. Проверьте настройки доступа с Давидом."
     : "Не удалось получить подтверждение от CRM. Не считаю данные сохраненными. Проверьте /draft перед повторной отправкой.";
 
-export function createBot(config: BotConfig, gateway: CrmGateway) {
+export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: CrmExtractor) {
   const bot = new Bot(config.token);
   // Only UI refresh subscriptions live here, never CRM state or reminder jobs.
   const watches = new Map<number, AbortController>();
@@ -140,10 +141,40 @@ export function createBot(config: BotConfig, gateway: CrmGateway) {
       ? { ...common, kind: "voice" as const, fileId: voice.file_id, fileUniqueId: voice.file_unique_id,
           duration: voice.duration, size: voice.file_size ?? null, mimeType: voice.mime_type ?? "audio/ogg" }
       : { ...common, kind: "text" as const, text: ctx.message.text! };
-    // API persists the source and queues STT/extraction. No OpenAI, DB or Redis in this handler.
-    await show(actor, await gateway.submit(actor, draft.id, input));
+    if (gateway.mode === "demo") {
+      await show(actor, await gateway.submit(actor, draft.id, input));
+      return;
+    }
+    if (!extractor) throw new GatewayError("unavailable");
+    await ctx.reply(voice ? "Транскрибирую голосовое и собираю поля…" : "Собираю поля CRM…");
+    const currentFields = Object.fromEntries(draft.fields.map((field) => [field.key, field.value]));
+    const processed = voice
+      ? await transcribeTelegramVoice(ctx, config, extractor, draft.role, currentFields)
+      : { transcript: ctx.message.text!, candidate: await extractor.fromText(draft.role, ctx.message.text!, currentFields) };
+    const sourceText = processed.transcript;
+    const candidate = processed.candidate;
+    await show(actor, await gateway.submit(actor, draft.id, { ...common, kind: "text", text: sourceText, extraction: candidate }));
   });
   bot.on("callback_query:data", (ctx) => ctx.answerCallbackQuery({ text: "Кнопка устарела. Откройте /draft." }));
   bot.on("message", (ctx) => ctx.reply("Сейчас принимаю текст и голосовые. Фото добавим следующим этапом."));
   return { bot, close: () => { for (const id of watches.keys()) stopWatch(id); } };
+}
+
+async function transcribeTelegramVoice(ctx: Context, config: BotConfig, extractor: CrmExtractor, role: Role, fields: Record<string, unknown>) {
+  const voice = ctx.message?.voice;
+  if (!voice) throw new GatewayError("invalid");
+  const fileResponse = await fetch(`https://api.telegram.org/bot${config.token}/getFile`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ file_id: voice.file_id }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const filePayload: unknown = await fileResponse.json().catch(() => null);
+  const path = filePayload && typeof filePayload === "object" && "result" in filePayload
+    && filePayload.result && typeof filePayload.result === "object" && "file_path" in filePayload.result
+    && typeof filePayload.result.file_path === "string" ? filePayload.result.file_path : null;
+  if (!fileResponse.ok || !path || path.includes("..")) throw new GatewayError("unavailable");
+  const audioResponse = await fetch(`https://api.telegram.org/file/bot${config.token}/${path}`, { signal: AbortSignal.timeout(30_000) });
+  if (!audioResponse.ok) throw new GatewayError("unavailable");
+  const audio = await audioResponse.blob();
+  if (!audio.size || audio.size > config.maxVoiceBytes) throw new GatewayError("invalid");
+  return extractor.fromVoice(role, new File([audio], `${voice.file_unique_id}.ogg`, { type: voice.mime_type ?? "audio/ogg" }), fields);
 }

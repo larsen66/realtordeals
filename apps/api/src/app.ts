@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { errorHandler } from "./middleware/error-handler.js";
 import { cardsRouter } from "./routes/cards.js";
+import { botRouter } from "./routes/bot.js";
 import { filesRouter } from "./routes/files.js";
 import { healthRouter } from "./routes/health.js";
 import { leadsRouter } from "./routes/leads.js";
@@ -17,5 +18,6 @@ app.use("/cards", cardsRouter);
 app.use("/leads", leadsRouter);
 app.use("/statuses", statusesRouter);
 app.use("/files", filesRouter);
+app.use("/bot/v1", botRouter);
 
 app.use(errorHandler);

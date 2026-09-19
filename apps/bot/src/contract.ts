@@ -31,7 +31,7 @@ export const draftSchema = z.object({
 export type Draft = z.infer<typeof draftSchema>;
 export type Actor = { telegramUserId: number; chatId: number };
 export type InputMessage =
-  | { kind: "text"; text: string; messageId: number; updateId: number }
+  | { kind: "text"; text: string; messageId: number; updateId: number; extraction?: unknown }
   | { kind: "voice"; fileId: string; fileUniqueId: string; size: number | null;
       duration: number; mimeType: string; messageId: number; updateId: number };
 
