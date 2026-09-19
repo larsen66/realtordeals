@@ -4,12 +4,19 @@ import type { BotConfig } from "./config.js";
 import { GatewayError, type Actor, type CrmGateway, type Draft, type Role } from "./contract.js";
 import { renderDraft, reviewKeyboard, roleKeyboard } from "./presentation.js";
 import { CrmExtractor } from "./extraction.js";
+import { OpenAiAgentError } from "@rieltordeals/worker";
 
 const actorOf = (ctx: Context): Actor => ({ telegramUserId: ctx.from!.id, chatId: ctx.chat!.id });
 const failureText = (error: unknown) => error instanceof GatewayError && error.code === "conflict"
   ? "Черновик изменился. Откройте /draft и проверьте актуальные поля перед подтверждением."
   : error instanceof GatewayError && error.code === "forbidden"
     ? "API не разрешил доступ. Проверьте настройки доступа с Давидом."
+    : error instanceof OpenAiAgentError && error.code === "rate_limit"
+      ? "OpenAI временно ограничил запросы. Подождите немного и отправьте сообщение еще раз."
+      : error instanceof OpenAiAgentError && error.code === "authentication"
+        ? "OpenAI не принял ключ. Обновите OPENAI_API_KEY в локальной настройке бота."
+        : error instanceof OpenAiAgentError
+          ? "Не удалось обработать сообщение через OpenAI. Данные в CRM не отправлены — попробуйте еще раз."
     : "Не удалось получить подтверждение от CRM. Не считаю данные сохраненными. Проверьте /draft перед повторной отправкой.";
 
 export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: CrmExtractor) {
