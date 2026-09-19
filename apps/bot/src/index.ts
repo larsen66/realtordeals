@@ -26,7 +26,9 @@ async function main() {
     });
   }
   console.log(`Roman bot starting in ${config.mode} mode.`);
-  await bot.start({ allowed_updates: ["message", "callback_query"] });
+  await bot.start({ allowed_updates: ["message", "callback_query"],
+    onStart: () => console.log(JSON.stringify({ time: new Date().toISOString(), service: "bot", event: "polling.ready" })),
+  });
 }
 
 main().catch(() => {

@@ -69,13 +69,24 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
   }
 
   bot.use(async (ctx, next) => {
+    const started = Date.now();
+    const log = (event: string, category?: string) => console.log(JSON.stringify({
+      time: new Date().toISOString(), service: "bot", event, updateId: ctx.update.update_id,
+      kind: ctx.callbackQuery ? "callback" : ctx.message?.voice ? "voice" : "message",
+      durationMs: Date.now() - started, category,
+    }));
+    log("update.start");
     if (!ctx.from || !config.allowedUserIds.has(ctx.from.id) || ctx.chat?.type !== "private") {
+      log("update.denied");
       if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: "Нет доступа" });
       else if (ctx.chat?.type === "private") await ctx.reply("Бот доступен только разрешенному менеджеру.");
       return;
     }
-    try { await next(); }
-    catch (error) { await ctx.reply(failureText(error)); }
+    try { await next(); log("update.complete"); }
+    catch (error) {
+      log("update.error", error instanceof GatewayError ? `crm.${error.code}` : error instanceof OpenAiAgentError ? `openai.${error.code}` : "telegram_or_internal");
+      await ctx.reply(failureText(error));
+    }
   });
 
   bot.command(["start", "help"], async (ctx) => {
@@ -154,12 +165,14 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
     }
     if (!extractor) throw new GatewayError("unavailable");
     await ctx.reply(voice ? "Транскрибирую голосовое и собираю поля…" : "Собираю поля CRM…");
+    console.log(JSON.stringify({ time: new Date().toISOString(), service: "bot", event: "processing.start", updateId: ctx.update.update_id, kind: voice ? "voice" : "text" }));
     const currentFields = Object.fromEntries(draft.fields.map((field) => [field.key, field.value]));
     const processed = voice
       ? await transcribeTelegramVoice(ctx, config, extractor, draft.role, currentFields)
       : { transcript: ctx.message.text!, candidate: await extractor.fromText(draft.role, ctx.message.text!, currentFields) };
     const sourceText = processed.transcript;
     const candidate = processed.candidate;
+    console.log(JSON.stringify({ time: new Date().toISOString(), service: "bot", event: "processing.complete", updateId: ctx.update.update_id }));
     await show(actor, await gateway.submit(actor, draft.id, { ...common, kind: "text", text: sourceText, extraction: candidate }));
   });
   bot.on("callback_query:data", (ctx) => ctx.answerCallbackQuery({ text: "Кнопка устарела. Откройте /draft." }));
