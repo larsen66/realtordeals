@@ -6,10 +6,12 @@ import {
 } from "@/components/ui/table";
 import { fieldString, firstParam, formatDay, listCards, matchesQuery, type Card } from "@/lib/cards";
 import { isBirthdaySoon } from "@/lib/birthday";
+import { normalizeObjectType, objectTypes } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { PaymentControl, StageControl, StageStatusControl, TemperatureControl } from "./card-status-controls";
 import { BuyerTasksSummary } from "./buyer-tasks-summary";
 import { DirectoryFilterForm } from "./directory-filter-form";
+import { SelectionTimer } from "./selection-timer";
 
 
 export type DirectoryMode = "buyers" | "sellers" | "selections" | "viewings" | "deals";
@@ -47,7 +49,7 @@ function Filter({ name, label, value, options }: {
   );
 }
 
-function optionsFromCards(cards: Card[], key: "source" | "objectType") {
+function optionsFromCards(cards: Card[], key: "source") {
   return [
     { value: "", label: "Все" },
     ...Array.from(new Set(cards.map((card) => card[key]).filter((value): value is string => Boolean(value))))
@@ -76,7 +78,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
   const payment = param("payment");
   const stage = param("stage");
   const source = param("source");
-  const objectType = param("objectType");
+  const objectType = normalizeObjectType(param("objectType"));
   const selectionStatus = param("selectionStatus");
   const sort = param("sort") || "newest";
   let cards: Card[];
@@ -100,7 +102,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
       (!payment || card.payment.some((value) => value === payment)) &&
       (!stage || fixedStage || card.stage === stage) &&
       (!source || card.source === source) &&
-      (!objectType || card.objectType === objectType) &&
+      (!objectType || normalizeObjectType(card.objectType) === objectType) &&
       (!selectionStatus || (card.selectionStatus ?? "waiting") === selectionStatus);
   });
   const filtered = matching.filter((card) => !temperature || card.temperature === temperature).sort((a, b) => {
@@ -115,7 +117,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
   const heads = seller
     ? ["Продавец / телефон", "Тип", "Адрес", "Цена", "Температура", "ДР"]
     : pipeline
-      ? ["Покупатель / телефон", "Бюджет", "Запрос", "Локация", "Температура", mode === "selections" ? "Статус подборки" : "Оплата"]
+      ? ["Покупатель / телефон", "Бюджет", "Запрос", "Локация", "Температура", mode === "selections" ? "Статус подборки" : "Оплата", ...(mode === "selections" ? ["Таймер"] : [])]
       : ["Покупатель / телефон", "Задачи", "Температура", "Этап", "Статус этапа", "Источник", "Бюджет", "Тип объекта", "Оплата", "ДР"];
   const cellClass = "px-4 py-4 text-[12px] text-foreground/70";
 
@@ -157,7 +159,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
             {filteredActive && <Link href={path} className="text-[12px] text-muted-foreground hover:underline">Сбросить</Link>}
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-            <Filter name="objectType" label="Тип объекта" value={objectType} options={optionsFromCards(cards, "objectType")} />
+            <Filter name="objectType" label="Тип объекта" value={objectType} options={[{ value: "", label: "Все" }, ...objectTypes.map((value) => ({ value, label: value }))]} />
             {!seller && <Filter name="payment" label="Оплата" value={payment} options={[{ value: "", label: "Любая" }, ...Object.entries(paymentLabels).map(([value, label]) => ({ value, label }))]} />}
             {!seller && !pipeline && <Filter name="stage" label="Этап" value={stage} options={[{ value: "", label: "Все этапы" }, ...Object.entries(stageLabels).map(([value, label]) => ({ value, label }))]} />}
             {!seller && <Filter name="source" label="Источник" value={source} options={optionsFromCards(cards, "source")} />}
@@ -198,6 +200,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
                   <TableCell className={`${cellClass} min-w-[130px] max-w-[220px] whitespace-normal`}>{fieldString(card, "location") ?? fieldString(card, "district") ?? "-"}</TableCell>
                   <TableCell className={cellClass}><TemperatureControl card={card} /></TableCell>
                   <TableCell className={cellClass}>{mode === "selections" ? <StageStatusControl card={card} /> : <PaymentControl card={card} />}</TableCell>
+                  {mode === "selections" && <TableCell className={cellClass}><SelectionTimer key={`${card.id}:${JSON.stringify(card.fields.selectionTimer)}`} card={card} /></TableCell>}
                 </> : <>
                   <TableCell className={`${cellClass} whitespace-normal`}><BuyerTasksSummary card={card} /></TableCell>
                   <TableCell className={cellClass}><TemperatureControl card={card} /></TableCell>

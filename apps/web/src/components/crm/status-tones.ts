@@ -1,11 +1,12 @@
 export const pillTones = {
-  gray: "bg-[#eef0f3] text-[#5b6570] dark:bg-white/10 dark:text-neutral-300",
-  blue: "bg-[#e8f1ff] text-[#245ac4] dark:bg-blue-400/15 dark:text-blue-300",
-  sky: "bg-[#e7f6fb] text-[#1a7080] dark:bg-sky-400/15 dark:text-sky-300",
-  amber: "bg-[#fff3d6] text-[#855b00] dark:bg-amber-400/15 dark:text-amber-300",
-  green: "bg-[#e5f6ea] text-[#246c3b] dark:bg-emerald-400/15 dark:text-emerald-300",
-  red: "bg-[#fee4e2] text-[#b42318] dark:bg-red-400/15 dark:text-red-300",
-  violet: "bg-[#f4ebff] text-[#6941c6] dark:bg-violet-400/15 dark:text-violet-300",
+  gray: "bg-[#667085] text-white dark:bg-white/10",
+  blue: "bg-[#2563eb] text-white dark:bg-blue-400/15",
+  sky: "bg-[#087fa3] text-white dark:bg-sky-400/15",
+  amber: "bg-[#a16a00] text-white dark:bg-amber-400/15",
+  green: "bg-[#25834a] text-white dark:bg-emerald-400/15",
+  red: "bg-[#d63d34] text-white dark:bg-red-400/15",
+  scarlet: "bg-[#d63d34] text-white dark:bg-red-400/15",
+  violet: "bg-[#8751d0] text-white dark:bg-violet-400/15",
 } as const;
 
 export type PillTone = keyof typeof pillTones;
@@ -35,7 +36,7 @@ export function paymentTone(value: string | null | undefined): PillTone {
 
 export function stageTone(value: string | null | undefined): PillTone {
   if (value === "selection") {
-    return "amber";
+    return "scarlet";
   }
   if (value === "viewing") {
     return "sky";

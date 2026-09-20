@@ -5,6 +5,8 @@ import {
   Building2,
   Eye,
   Handshake,
+  Megaphone,
+  ContactRound,
   LayoutDashboard,
   Layers,
   ListTodo,
@@ -80,6 +82,8 @@ export function Sidebar({
       label: "Сделки",
       icon: Handshake,
     },
+    { href: "/crm/activities", label: "Мои активности", icon: Megaphone },
+    { href: "/crm/referrals", label: "Мои рефералы", icon: ContactRound },
   ];
 
   return (
@@ -108,6 +112,13 @@ export function Sidebar({
         >
           <Plus aria-hidden="true" className="size-4 shrink-0" />
           Добавить покупателя
+        </Link>
+        <Link
+          href="/crm/cards/new?role=seller"
+          className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Plus aria-hidden="true" className="size-4 shrink-0" />
+          Добавить продавца
         </Link>
       </div>
 

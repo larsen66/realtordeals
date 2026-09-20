@@ -3,6 +3,7 @@ import type { CardRole } from "./enums.js";
 import { finishSchema, whoseApartmentSchema } from "./enums.js";
 import { paymentSelectionSchema } from "./payments.js";
 import { cardTaskSchema } from "./tasks.js";
+import { selectionTimerSchema } from "./selection-timer.js";
 
 const optionalText = z.preprocess((value) => {
   if (value == null) {
@@ -25,6 +26,8 @@ const optionalBoolean = z.preprocess((value) => {
 export const sellerFieldsSchema = z
   .object({
     paymentMethods: paymentSelectionSchema.optional(),
+    initialPayment: optionalText,
+    monthlyPayment: optionalText,
     tasks: cardTaskSchema.array().optional(),
     price: optionalText,
     rooms: optionalText,
@@ -48,9 +51,14 @@ export const sellerFieldsSchema = z
 export const buyerFieldsSchema = z
   .object({
     paymentMethods: paymentSelectionSchema.optional(),
+    initialPayment: optionalText,
+    monthlyPayment: optionalText,
     tasks: cardTaskSchema.array().optional(),
     selectionNotes: optionalText,
+    selectionTimer: selectionTimerSchema.nullable().optional(),
+    referralComment: z.string().trim().max(5000).optional(),
     selectionLinks: optionalText,
+    dealComment: z.string().trim().max(5000).optional(),
     purchaseWhat: optionalText,
     purchaseMethod: optionalText,
     location: optionalText,

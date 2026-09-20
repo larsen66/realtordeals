@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/persist.test.ts src/tags.test.ts src/stage-status.test.ts src/remaining-days.test.ts src/card-validation.test.ts"
+    "test": "tsx --test src/persist.test.ts src/tags.test.ts src/stage-status.test.ts src/remaining-days.test.ts src/card-validation.test.ts src/selection-timer.test.ts"
   },
   "dependencies": {
     "zod": "^4.1.5"

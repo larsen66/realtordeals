@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createCard, toDateTimeLocal, updateCard, type Card } from "@/lib/cards";
-import { formatBudget } from "@/lib/budget";
+import { formatBudget, formatWholeAmount } from "@/lib/budget";
+import { normalizeObjectType, objectTypes } from "@/lib/object-types";
 import { PaymentOptions } from "./payment-options";
 import { Field } from "./field";
 import { CardPanelContext } from "./card-panel";
@@ -50,7 +51,7 @@ function fromCard(card?: Card, initialRole: CardRole = "buyer") {
     dealType: (card?.dealType ?? (initialRole === "seller" ? "sale" : "purchase")) as DealType,
     phone: card?.phone ?? "+7",
     name: card?.name ?? "",
-    objectType: card?.objectType ?? "",
+    objectType: normalizeObjectType(card?.objectType),
     address: card?.address ?? "",
     source: card?.source ?? "",
     budget: formatBudget(card?.budget ?? ""),
@@ -231,15 +232,28 @@ export function CardForm({ card, initialRole }: Props) {
           />
         </Field>
         <Field label="Тип объекта">
-          <Input
-            value={state.objectType}
-            onChange={(event) =>
+          <Select
+            value={state.objectType || "none"}
+            onValueChange={(value) =>
               setState((current) => ({
                 ...current,
-                objectType: event.target.value,
+                objectType: value === "none" ? "" : value,
               }))
             }
-          />
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Выберите тип объекта" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Не выбран</SelectItem>
+              {objectTypes.map((value) => (
+                <SelectItem key={value} value={value}>{value}</SelectItem>
+              ))}
+              {state.objectType && !objectTypes.includes(state.objectType) && (
+                <SelectItem value={state.objectType}>{state.objectType}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Температура">
           <Select
@@ -325,12 +339,30 @@ export function CardForm({ card, initialRole }: Props) {
               }}
             />
           </Field>
-          <Field label="Оплата">
+          <div className="grid gap-1.5">
+            <span className="text-[0.7rem] tracking-[0.12em] text-muted-foreground uppercase">Оплата</span>
             <PaymentOptions
               value={state.payment}
               onChange={(payment) => setState((current) => ({ ...current, payment }))}
             />
-          </Field>
+            {state.payment.some((payment) => payment === "mortgage" || payment === "installment") ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(["initialPayment", "monthlyPayment"] as const).map((key) => (
+                  <label key={key} className="grid gap-1.5">
+                    <span className="text-[0.7rem] tracking-[0.12em] text-muted-foreground uppercase">
+                      {key === "initialPayment" ? "ПВ" : "ЕМ"}
+                    </span>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={fieldText(key)}
+                      onChange={(event) => setField(key, formatWholeAmount(event.currentTarget.value))}
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <Field label="Этап">
             <Select
               value={state.stage || "selection"}
@@ -409,6 +441,11 @@ export function CardForm({ card, initialRole }: Props) {
               </Select>
             </Field>
           ) : null}
+          {state.stage === "referral" && <div className="sm:col-span-2">
+            <Field label="Комментарий по рефералу">
+              <Textarea value={fieldText("referralComment")} onChange={event => setField("referralComment", event.target.value)} maxLength={5000} />
+            </Field>
+          </div>}
           <Field label="Что покупает">
             <Input
               value={fieldText("purchaseWhat")}
@@ -636,6 +673,17 @@ export function CardForm({ card, initialRole }: Props) {
         <div><h2 className="font-semibold">Подборка покупателя</h2><p className="mt-1 text-sm text-muted-foreground">Текущие варианты для запроса выше. Дополняйте их по мере работы с покупателем.</p></div>
         <Field label="Информация о подборке"><Textarea value={fieldText("selectionNotes")} onChange={(event) => setField("selectionNotes", event.target.value)} placeholder="Что подобрали, что понравилось, какие варианты нужно заменить" /></Field>
         <Field label="Ссылки на варианты"><Textarea value={fieldText("selectionLinks")} onChange={(event) => setField("selectionLinks", event.target.value)} placeholder="По одной ссылке на строку" /></Field>
+      </section>}
+
+      {state.role === "buyer" && <section className="space-y-4 rounded-xl border bg-muted/40 p-4">
+        <div><h2 className="font-semibold">Комментарий по сделке</h2><p className="mt-1 text-sm text-muted-foreground">Заметки о том, что нужно сделать по сделке.</p></div>
+        <Textarea
+          value={fieldText("dealComment")}
+          onChange={(event) => setField("dealComment", event.target.value)}
+          placeholder="Что нужно сделать по сделке"
+          maxLength={5000}
+          rows={5}
+        />
       </section>}
 
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
