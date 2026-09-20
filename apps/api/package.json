@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "pnpm --filter @rieltordeals/domain build && tsc",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test src/app.test.ts src/activities.test.ts src/lib/supabase.test.ts"
