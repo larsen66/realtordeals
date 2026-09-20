@@ -1,7 +1,16 @@
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+function apiUrl() {
+  if (typeof window !== "undefined") return "/api/crm";
+  return (process.env.CRM_API_URL ?? "http://localhost:3001").replace(/\/$/, "");
+}
 
 export function api(path: string, init?: RequestInit) {
-  return fetch(`${apiUrl}${path}`, init);
+  const headers = new Headers(init?.headers);
+  if (typeof window === "undefined") {
+    const token = process.env.CRM_API_TOKEN?.trim();
+    if (!token) throw new Error("CRM_API_TOKEN is required for server-side API requests");
+    headers.set("authorization", `Bearer ${token}`);
+  }
+  return fetch(`${apiUrl()}${path}`, { ...init, headers });
 }
 
 export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {

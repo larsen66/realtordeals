@@ -51,3 +51,11 @@ export function readConfig(env: NodeJS.ProcessEnv): BotConfig {
   }
   return config;
 }
+
+export function readWebhookSecret(env: NodeJS.ProcessEnv): string {
+  const secret = env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  if (!secret || secret.length > 256 || !/^[A-Za-z0-9_-]+$/.test(secret)) {
+    throw new Error("Set TELEGRAM_WEBHOOK_SECRET using only letters, digits, underscore and hyphen");
+  }
+  return secret;
+}

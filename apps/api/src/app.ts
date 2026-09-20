@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { errorHandler } from "./middleware/error-handler.js";
+import { requireBearerToken } from "./middleware/bearer-auth.js";
 import { cardsRouter } from "./routes/cards.js";
 import { botRouter } from "./routes/bot.js";
 import { filesRouter } from "./routes/files.js";
@@ -31,6 +32,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 app.use("/health", healthRouter);
+app.use(["/cards", "/statuses", "/files"], requireBearerToken("CRM_API_TOKEN"));
 app.use("/cards", cardsRouter);
 app.use("/leads", leadsRouter);
 app.use("/statuses", statusesRouter);
@@ -38,3 +40,5 @@ app.use("/files", filesRouter);
 app.use("/bot/v1", botRouter);
 
 app.use(errorHandler);
+
+export default app;

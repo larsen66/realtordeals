@@ -3,9 +3,9 @@ import { createBot } from "../src/bot.js";
 import type { CrmGateway } from "../src/contract.js";
 
 export const actor = { telegramUserId: 42, chatId: 42 };
-export function harness(gateway: CrmGateway) {
+export function harness(gateway: CrmGateway, draftUsageReport?: (draftId: string) => string) {
   const runtime = createBot({ mode: gateway.mode, token: "123456:offline-test-only", allowedUserIds: new Set([42]),
-    maxVoiceBytes: 10 * 1024 * 1024, maxVoiceSeconds: 300 }, gateway);
+    maxVoiceBytes: 10 * 1024 * 1024, maxVoiceSeconds: 300 }, gateway, undefined, undefined, draftUsageReport);
   const botUser: UserFromGetMe = { id: 123456, is_bot: true, first_name: "Roman test", username: "roman_test_bot",
     can_join_groups: false, can_read_all_group_messages: false, supports_inline_queries: false, can_connect_to_business: false,
     has_main_web_app: false, has_topics_enabled: false, allows_users_to_create_topics: false,

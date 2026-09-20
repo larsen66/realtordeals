@@ -1,14 +1,17 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { Bot, type Context } from "grammy";
+import { Bot, InlineKeyboard, type Context } from "grammy";
 import type { BotConfig } from "./config.js";
 import { GatewayError, type Actor, type CrmGateway, type Draft, type Role } from "./contract.js";
 import { renderDraft, reviewKeyboard, roleKeyboard } from "./presentation.js";
 import { CrmExtractor } from "./extraction.js";
 import { OpenAiAgentError } from "@rieltordeals/worker";
+import { draftUsageContext } from "./usage.js";
 
 const actorOf = (ctx: Context): Actor => ({ telegramUserId: ctx.from!.id, chatId: ctx.chat!.id });
-const failureText = (error: unknown) => error instanceof GatewayError && error.code === "conflict"
-  ? "Черновик изменился. Откройте /draft и проверьте актуальные поля перед подтверждением."
+const failureText = (error: unknown) => error instanceof GatewayError && error.code === "not_found"
+  ? "Черновик этой кнопки больше недоступен: он мог исчезнуть после перезапуска или вы открыли другую заявку. Откройте /draft. Если текущего черновика нет — /new и отправьте данные заново. Ранее сохранённую карточку сначала проверьте в CRM, чтобы не создать дубль."
+  : error instanceof GatewayError && error.code === "conflict"
+  ? "Черновик или карточка CRM изменились. Откройте /draft. Если клиент изменён в CRM, заново найдите его через /edit и внесите правки."
   : error instanceof GatewayError && error.code === "forbidden"
     ? "API не разрешил доступ. Проверьте настройки доступа с Давидом."
     : error instanceof OpenAiAgentError && error.code === "rate_limit"
@@ -19,7 +22,7 @@ const failureText = (error: unknown) => error instanceof GatewayError && error.c
           ? "Не удалось обработать сообщение через OpenAI. Данные в CRM не отправлены — попробуйте еще раз."
     : "Не удалось получить подтверждение от CRM. Не считаю данные сохраненными. Проверьте /draft перед повторной отправкой.";
 
-export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: CrmExtractor) {
+export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: CrmExtractor, usageReport?: () => string | Promise<string>, draftUsageReport?: (draftId: string) => string | Promise<string>) {
   const bot = new Bot(config.token);
   // Only UI refresh subscriptions live here, never CRM state or reminder jobs.
   const watches = new Map<number, AbortController>();
@@ -27,6 +30,12 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
 
   async function sendReview(actor: Actor, draft: Draft) {
     const chunks = renderDraft(draft, gateway.mode === "demo");
+    if (draft.status === "confirmed" && draftUsageReport) {
+      const footer = await draftUsageReport(draft.id);
+      const last = chunks.length - 1;
+      if (chunks[last]!.length + footer.length + 2 <= 4000) chunks[last] += "\n\n" + footer;
+      else chunks.push(footer);
+    }
     for (let i = 0; i < chunks.length; i++) {
       await bot.api.sendMessage(actor.chatId, chunks[i]!, {
         ...(i === chunks.length - 1 ? { reply_markup: reviewKeyboard(draft) } : {}),
@@ -91,11 +100,45 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
 
   bot.command(["start", "help"], async (ctx) => {
     await ctx.reply((gateway.mode === "demo" ? "ДЕМО: OpenAI и CRM не подключены.\n" : "") +
-      "После выбора роли отправьте текст или голос. Я покажу поля для проверки. Запись — только по кнопке «Всё верно».\n" +
-      "/new — новая заявка\n/draft — текущий черновик\n" +
+      "После выбора роли отправьте текст или голос. Я покажу поля для проверки. Обязателен только телефон. Остальные поля можно пропустить. Запись — только по кнопке «Сохранить».\n" +
+      "/buyer — покупатель\n/seller — продавец\n/edit — клиент CRM\n/new — новая заявка\n/draft — текущий черновик\n/usage — токены и оценка расходов\n" +
       (gateway.mode === "demo" ? "Для демо вводите строки «Имя: …», «Телефон: …», «Бюджет: …» или «Цена: …». Голос пока не распознается." : ""),
       { reply_markup: roleKeyboard() });
   });
+  for (const role of ["buyer", "seller"] as const) {
+    bot.command(role, async (ctx) => {
+      const actor = actorOf(ctx);
+      await show(actor, await gateway.create(actor, role, `command:${ctx.update.update_id}:${role}`));
+    });
+  }
+  bot.command("edit", async (ctx) => {
+    if (!gateway.searchClients || !gateway.editClient) {
+      await ctx.reply("Поиск клиентов доступен при подключении CRM."); return;
+    }
+    const phone = ctx.match.trim();
+    if (!phone) {
+      await ctx.reply("Введите /edit и полный телефон клиента, например: /edit +79991234567. Затем выберите карточку."); return;
+    }
+    if (phone.replace(/\D/g, "").length < 7) {
+      await ctx.reply("Укажите полный телефон после /edit."); return;
+    }
+    const clients = await gateway.searchClients(actorOf(ctx), phone);
+    if (!clients.length) { await ctx.reply("Клиент не найден. Проверьте телефон или создайте новую заявку: /new."); return; }
+    const keyboard = new InlineKeyboard();
+    for (const client of clients.slice(0, 50)) keyboard.text(
+      `${client.role === "buyer" ? "Покупатель" : "Продавец"}: ${(client.name ?? client.phone).slice(0, 40)}`,
+      `edit:${client.id}`).row();
+    await ctx.reply("Выберите клиента для редактирования:", { reply_markup: keyboard });
+  });
+  bot.callbackQuery(/^edit:([A-Za-z0-9-]{36})$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    if (!gateway.editClient) { await ctx.reply("CRM не подключена."); return; }
+    const actor = actorOf(ctx);
+    const draft = await gateway.editClient(actor, ctx.match[1]!, `edit:${ctx.callbackQuery.message!.message_id}:${ctx.match[1]}`);
+    await show(actor, draft);
+    await ctx.reply("Пришлите изменения текстом или голосом. Нажмите «Сохранить», чтобы обновить эту карточку CRM.");
+  });
+  bot.command("usage", async (ctx) => ctx.reply(await usageReport?.() ?? "Учёт OpenAI недоступен в деморежиме."));
   bot.command("new", (ctx) => ctx.reply("Выберите роль новой заявки. Предыдущий черновик остается в бэкенде.", { reply_markup: roleKeyboard() }));
   bot.command("draft", async (ctx) => {
     const actor = actorOf(ctx);
@@ -142,7 +185,7 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
   });
 
   bot.on(["message:text", "message:voice"], async (ctx) => {
-    if (ctx.message.text?.startsWith("/")) { await ctx.reply("Команды: /new, /draft, /help"); return; }
+    if (ctx.message.text?.startsWith("/")) { await ctx.reply("Команды: /buyer, /seller, /edit, /draft, /usage, /help"); return; }
     const actor = actorOf(ctx);
     const draft = await gateway.current(actor);
     if (!draft || draft.status === "confirmed") {
@@ -167,9 +210,9 @@ export function createBot(config: BotConfig, gateway: CrmGateway, extractor?: Cr
     await ctx.reply(voice ? "Транскрибирую голосовое и собираю поля…" : "Собираю поля CRM…");
     console.log(JSON.stringify({ time: new Date().toISOString(), service: "bot", event: "processing.start", updateId: ctx.update.update_id, kind: voice ? "voice" : "text" }));
     const currentFields = Object.fromEntries(draft.fields.map((field) => [field.key, field.value]));
-    const processed = voice
+    const processed = await draftUsageContext.run(draft.id, async () => voice
       ? await transcribeTelegramVoice(ctx, config, extractor, draft.role, currentFields)
-      : { transcript: ctx.message.text!, candidate: await extractor.fromText(draft.role, ctx.message.text!, currentFields) };
+      : { transcript: ctx.message.text!, candidate: await extractor.fromText(draft.role, ctx.message.text!, currentFields) });
     const sourceText = processed.transcript;
     const candidate = processed.candidate;
     console.log(JSON.stringify({ time: new Date().toISOString(), service: "bot", event: "processing.complete", updateId: ctx.update.update_id }));

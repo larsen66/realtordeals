@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import { draftSchema, GatewayError, type Actor, type CrmGateway, type InputMessage, type Role } from "../contract.js";
+import { clientSchema, draftSchema, GatewayError, type Actor, type CrmGateway, type InputMessage, type Role } from "../contract.js";
 
 // Proposed /bot/v1 contract, documented in docs/integration/bot-api-proposal.md.
 // These routes do NOT exist on the baseline API yet. No silent demo fallback.
@@ -34,7 +34,7 @@ export class HttpCrmGateway implements CrmGateway {
       });
       log("crm.response", { status: response.status });
       if (!response.ok) {
-        throw new GatewayError(response.status === 409 ? "conflict" :
+        throw new GatewayError(response.status === 404 ? "not_found" : response.status === 409 ? "conflict" :
           [401, 403].includes(response.status) ? "forbidden" :
           response.status === 422 ? "invalid" : "unavailable");
       }
@@ -53,6 +53,12 @@ export class HttpCrmGateway implements CrmGateway {
     }
   }
 
+  searchClients(actor: Actor, phone: string) {
+    return this.request(actor, "/clients/search", clientSchema.array(), { phone });
+  }
+  editClient(actor: Actor, id: string, requestId: string) {
+    return this.request(actor, `/clients/${encodeURIComponent(id)}/edit`, draftSchema, {}, requestId);
+  }
   current(actor: Actor) { return this.request(actor, "/drafts/current", draftSchema.nullable()); }
   create(actor: Actor, role: Role, requestId: string) {
     return this.request(actor, "/drafts", draftSchema, { role }, requestId);

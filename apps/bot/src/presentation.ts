@@ -7,10 +7,10 @@ export const roleKeyboard = () => new InlineKeyboard()
 export function reviewKeyboard(draft: Draft): InlineKeyboard {
   const kb = new InlineKeyboard();
   if (draft.canConfirm && draft.status === "ready") {
-    kb.text("Всё верно — сохранить", `ok:${draft.id}:${draft.revision}`).row();
+    kb.text("Сохранить", `ok:${draft.id}:${draft.revision}`).row();
   }
   if (draft.status !== "confirmed") {
-    kb.text("Исправить / дополнить", `fix:${draft.id}:${draft.revision}`).row();
+    kb.text("Изменить", `fix:${draft.id}:${draft.revision}`).row();
     kb.text("Обновить", `show:${draft.id}`);
   }
   return kb;
@@ -20,6 +20,8 @@ export function renderDraft(draft: Draft, demo: boolean): string[] {
   const lines: string[] = [];
   if (demo) lines.push("ДЕМО — без OpenAI и записи в CRM. Данные исчезнут после перезапуска.");
   lines.push(`${draft.role === "buyer" ? "Покупатель" : "Продавец"} · черновик ${draft.id} · версия ${draft.revision}`);
+  if (draft.targetCardId) lines.push(`Редактирование CRM: ${draft.targetCardId}`);
+  lines.push("Обязателен только телефон. Остальные поля можно не заполнять.");
   for (const field of draft.fields) lines.push(`${field.label}: ${field.value ?? "Не выяснено"}`);
   if (draft.notes.length) lines.push("Примечания:", ...draft.notes);
   if (draft.issues.length) lines.push("Нужно уточнить:", ...draft.issues.map((issue) => `• ${issue}`));
@@ -28,7 +30,7 @@ export function renderDraft(draft: Draft, demo: boolean): string[] {
     ? "Подтверждение проверено в деморежиме. В CRM ничего не отправлено."
     : `Сохранено в CRM. Карточка: ${draft.cardId}`);
   else if (draft.canConfirm) lines.push("Проверьте все поля. Всё ли верно?");
-  else lines.push("Пришлите текст или голос, чтобы дополнить данные. Неполный черновик пока нельзя подтвердить.");
+  else lines.push("Пришлите текст или голос, чтобы дополнить данные. Для сохранения укажите телефон.");
 
   // Preserve every field. Plain text avoids Telegram HTML/Markdown injection.
   const chunks: string[] = [];

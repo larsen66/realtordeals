@@ -64,15 +64,15 @@ function clean(candidate: ExtractionCandidate): ExtractionCandidate {
 export class CrmExtractor {
   constructor(private agent: OpenAiAgent) {}
 
-  async fromText(role: Role, sourceText: string, currentFields: Record<string, unknown>): Promise<ExtractionCandidate> {
+  async fromText(role: Role, sourceText: string, currentFields: Record<string, unknown>, operation: "text_analysis" | "voice_analysis" = "text_analysis"): Promise<ExtractionCandidate> {
     const schema: CrmExtractionSchema<ExtractionCandidate> = {
       jsonSchema: jsonSchemaFor(role), parse: (value) => clean(candidateSchema.parse(value)),
     };
-    return this.agent.extract({ role, sourceText, currentFields }, schema);
+    return this.agent.extract({ role, sourceText, currentFields }, schema, operation);
   }
 
   async fromVoice(role: Role, voice: File, currentFields: Record<string, unknown>) {
     const transcript = await this.agent.transcribe(voice);
-    return { transcript, candidate: await this.fromText(role, transcript, currentFields) };
+    return { transcript, candidate: await this.fromText(role, transcript, currentFields, "voice_analysis") };
   }
 }

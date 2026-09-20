@@ -2,17 +2,20 @@
   "name": "bot",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "tsc -p tsconfig.check.json",
-    "test": "node --import tsx --test test/bot.test.ts test/agent.test.ts",
+    "test": "node --import tsx --test test/bot.test.ts test/agent.test.ts test/webhook.test.ts",
     "demo": "node --import tsx scripts/demo.ts"
   },
   "dependencies": {
     "@rieltordeals/worker": "workspace:*",
+    "@vercel/functions": "3.9.8",
     "grammy": "1.46.0",
     "zod": "4.6.5"
   },

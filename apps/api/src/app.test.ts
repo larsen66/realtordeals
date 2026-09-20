@@ -7,6 +7,8 @@ import { setCardStore } from "./cards/store.js";
 
 setCardStore(createMemoryStore());
 process.env.BOT_API_TOKEN = "test-bot-api-token";
+process.env.CRM_API_TOKEN = "test-crm-api-token";
+process.env.USE_MEMORY_STORE = "true";
 
 const server = app.listen(0);
 await new Promise<void>((resolve) => {
@@ -18,14 +20,25 @@ function baseUrl() {
   return `http://127.0.0.1:${port}`;
 }
 
+function crmFetch(path: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("authorization", "Bearer test-crm-api-token");
+  return fetch(`${baseUrl()}${path}`, { ...init, headers });
+}
+
 test("GET /health returns { ok: true }", async () => {
   const res = await fetch(`${baseUrl()}/health`);
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { ok: true });
 });
 
+test("protected CRM routes reject requests without the API token", async () => {
+  assert.equal((await fetch(`${baseUrl()}/cards`)).status, 401);
+  assert.equal((await fetch(`${baseUrl()}/statuses`)).status, 401);
+});
+
 test("POST /cards without phone returns 400", async () => {
-  const res = await fetch(`${baseUrl()}/cards`, {
+  const res = await crmFetch("/cards", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ role: "buyer", dealType: "purchase" }),
@@ -36,7 +49,7 @@ test("POST /cards without phone returns 400", async () => {
 });
 
 test("POST /cards creates a buyer card with default stage", async () => {
-  const res = await fetch(`${baseUrl()}/cards`, {
+  const res = await crmFetch("/cards", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -62,7 +75,7 @@ test("POST /cards creates a buyer card with default stage", async () => {
 });
 
 test("PATCH /cards moves a buyer to viewing and clears selection status", async () => {
-  const created = await fetch(`${baseUrl()}/cards`, {
+  const created = await crmFetch("/cards", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -73,7 +86,7 @@ test("PATCH /cards moves a buyer to viewing and clears selection status", async 
   });
   const { card } = (await created.json()) as { card: { id: string } };
 
-  const res = await fetch(`${baseUrl()}/cards/${card.id}`, {
+  const res = await crmFetch(`/cards/${card.id}`, {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ stage: "viewing" }),
@@ -87,7 +100,7 @@ test("PATCH /cards moves a buyer to viewing and clears selection status", async 
 });
 
 test("GET /statuses returns temperatures and stages from domain", async () => {
-  const res = await fetch(`${baseUrl()}/statuses`);
+  const res = await crmFetch("/statuses");
   assert.equal(res.status, 200);
   const body = (await res.json()) as {
     temperatures: { value: string }[];
@@ -149,7 +162,7 @@ test("bot creates a draft, validates phone and saves exactly one CRM card after 
     method: "POST", headers, body: JSON.stringify({ revision: review.revision, confirmed: true }),
   });
   assert.equal((await repeated.json() as { cardId: string }).cardId, saved.cardId);
-  const card = await fetch(`${baseUrl()}/cards/${saved.cardId}`);
+  const card = await crmFetch(`/cards/${saved.cardId}`);
   assert.equal(card.status, 200);
   assert.equal(((await card.json()) as { card: { fields: { purchaseWhat: string } } }).card.fields.purchaseWhat, "Квартира");
 });
@@ -163,7 +176,7 @@ test("bot route rejects missing API token and stale confirmation", async () => {
 });
 
 async function request(path: string, method: string, input?: unknown) {
-  const response = await fetch(`${baseUrl()}${path}`, {
+  const response = await crmFetch(path, {
     method, headers: { "content-type": "application/json" },
     body: input === undefined ? undefined : JSON.stringify(input),
   });
@@ -375,6 +388,77 @@ test("clearing the buyer stage persists no selection or referral substatus", asy
     assert.equal(saved.selectionStatus, null);
     assert.equal(saved.referralStatus, null);
   }
+});
+
+
+async function botRequest(path: string, body: unknown, key = path) {
+  const response = await fetch(`${baseUrl()}/bot/v1${path}`, { method: "POST", headers: {
+    authorization: "Bearer test-bot-api-token", "content-type": "application/json",
+    "x-telegram-user-id": "99", "x-telegram-chat-id": "99", "idempotency-key": key,
+  }, body: JSON.stringify(body) });
+  return { status: response.status, body: await response.json() as any };
+}
+const phoneCandidate = (phone: string | null) => ({ name: null, phone, objectType: null,
+  address: null, source: null, budget: null, temperature: null, payment: null,
+  promisedCallAt: null, fields: {}, notes: [] });
+
+test("bot requires only phone for both roles and rejects confirmation without it", async () => {
+  for (const role of ["buyer", "seller"]) {
+    const { body: draft } = await botRequest("/drafts", { role }, `phone-only-${role}`);
+    assert.equal((await botRequest(`/drafts/${draft.id}/confirm`, { revision: 0, confirmed: true })).status, 422);
+    const { body: ready } = await botRequest(`/drafts/${draft.id}/messages`, {
+      kind: "text", text: "+79990009930", messageId: 900, updateId: 900,
+      extraction: phoneCandidate("+79990009930"),
+    });
+    assert.equal(ready.canConfirm, true);
+    const saved = await botRequest(`/drafts/${draft.id}/confirm`, { revision: ready.revision, confirmed: true });
+    assert.equal(saved.status, 200);
+    const card = (await request(`/cards/${saved.body.cardId}`, "GET")).body.card;
+    assert.equal(card.name, null);
+    assert.equal(card.budget, null);
+    assert.deepEqual(card.fields, {});
+  }
+});
+
+test("CRM edit preserves existing data, updates same card and rejects stale writes", async () => {
+  const { body: { card } } = await request("/cards", "POST", {
+    role: "buyer", dealType: "purchase", phone: "+79990009931", name: "До правки",
+    birthday: "2000-01-02", stage: "referral", fields: { area: "70", tasks: [{
+      id: "00000000-0000-4000-8000-000000000088", type: "call", title: "Позвонить", dueAt: null, completedAt: null,
+    }] },
+  });
+  assert.ok(card);
+  const found = await botRequest("/clients/search", { phone: "8 (999) 000-99-31" });
+  assert.ok(found.body.some((item: any) => item.id === card.id));
+  const { body: draft } = await botRequest(`/clients/${card.id}/edit`, {}, "edit-first");
+  assert.equal(draft.targetCardId, card.id);
+  assert.equal((await request(`/cards/${card.id}`, "GET")).body.card.name, "До правки");
+  const { body: ready } = await botRequest(`/drafts/${draft.id}/messages`, {
+    kind: "text", text: "Имя После правки", messageId: 901, updateId: 901,
+    extraction: { ...phoneCandidate(null), name: "После правки" },
+  });
+  const confirm = () => botRequest(`/drafts/${draft.id}/confirm`, { revision: ready.revision, confirmed: true });
+  assert.equal((await confirm()).body.cardId, card.id);
+  assert.equal((await confirm()).body.cardId, card.id);
+  const saved = (await request(`/cards/${card.id}`, "GET")).body.card;
+  assert.equal(saved.name, "После правки");
+  assert.equal(saved.birthday, card.birthday);
+  assert.equal(saved.stage, card.stage);
+  assert.deepEqual(saved.fields, card.fields);
+  const { body: stale } = await botRequest(`/clients/${card.id}/edit`, {}, "edit-second");
+  await request(`/cards/${card.id}`, "PATCH", { budget: "10 млн" });
+  assert.equal((await botRequest(`/drafts/${stale.id}/confirm`, { revision: stale.revision, confirmed: true })).status, 409);
+  assert.equal((await request(`/cards/${card.id}`, "GET")).body.card.budget, "10 млн");
+});
+
+test("usage survives separate requests, deduplicates events and filters drafts", async () => {
+  const row = { id: "00000000-0000-4000-8000-000000000099", keyId: "abcdef0123456789", draftId: "example",
+    totalTokens: 120, estimatedUsd: 0.0001 };
+  assert.equal((await botRequest("/usage", row)).status, 200);
+  await botRequest("/usage", row);
+  assert.deepEqual((await botRequest("/usage/report", { keyId: row.keyId })).body,
+    { count: 1, tokens: 120, usd: 0.0001, unknown: 0 });
+  assert.equal((await botRequest("/usage/report", { keyId: row.keyId, draftId: "other" })).body.count, 0);
 });
 
 after(() => {

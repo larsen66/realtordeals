@@ -20,6 +20,7 @@ export const draftSchema = z.object({
   notes: z.array(z.string()),
   canConfirm: z.boolean(),
   cardId: z.string().min(1).nullable(),
+  targetCardId: z.string().nullable().optional(),
 }).superRefine((d, ctx) => {
   if (d.canConfirm && (d.status !== "ready" || d.issues.length > 0)) {
     ctx.addIssue({ code: "custom", message: "Inconsistent confirmation state" });
@@ -35,7 +36,12 @@ export type InputMessage =
   | { kind: "voice"; fileId: string; fileUniqueId: string; size: number | null;
       duration: number; mimeType: string; messageId: number; updateId: number };
 
+export const clientSchema = z.object({ id: z.uuid(), name: z.string().nullable(), phone: z.string(), role: roleSchema });
+export type Client = z.infer<typeof clientSchema>;
+
 export interface CrmGateway {
+  searchClients?(actor: Actor, phone: string): Promise<Client[]>;
+  editClient?(actor: Actor, id: string, requestId: string): Promise<Draft>;
   readonly mode: "demo" | "api";
   current(actor: Actor): Promise<Draft | null>;
   create(actor: Actor, role: Role, requestId: string): Promise<Draft>;
@@ -45,7 +51,7 @@ export interface CrmGateway {
 }
 
 export class GatewayError extends Error {
-  constructor(readonly code: "unavailable" | "conflict" | "invalid" | "forbidden") {
+  constructor(readonly code: "unavailable" | "conflict" | "invalid" | "forbidden" | "not_found") {
     super(code); // Do not carry raw HTTP bodies, client details or credentials.
   }
 }

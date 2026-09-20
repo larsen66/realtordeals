@@ -13,6 +13,33 @@ const ready = async (g: DemoCrmGateway) => {
   return g.submit(actor, d.id, { kind: "text", text: "Имя: Учебный клиент\nТелефон: +7 000 000-00-00", messageId: 10, updateId: 10 });
 };
 
+test("usage footer is attached only after confirmation and uses the saved draft ID", async () => {
+  const g = new DemoCrmGateway();
+  const d = await ready(g);
+  const h = harness(g, id => { assert.equal(id, d.id); return "Потрачено за запрос: 110 токенов\nОстаток: недоступен"; });
+  await h.text("/draft");
+  assert.doesNotMatch(h.output(), /Потрачено за запрос/);
+  await h.click(`ok:${d.id}:${d.revision}`);
+  assert.match(h.sent.filter(s => s.method === "sendMessage").at(-1)!.text!, /Потрачено за запрос: 110 токенов/);
+  assert.equal(g.confirmedCount, 1);
+  h.close();
+});
+
+test("expired draft button explains recovery instead of claiming CRM is unavailable", async () => {
+  const methods: string[] = [];
+  const gateway = new HttpCrmGateway("http://localhost:3001", "test-token", async (_url, init) => {
+    methods.push(init?.method ?? "GET");
+    return new Response(JSON.stringify({ error: "draft not found" }), { status: 404 });
+  });
+  const h = harness(gateway);
+  await h.click("ok:expired-draft:1");
+  assert.match(h.output(), /Черновик этой кнопки больше недоступен/);
+  assert.match(h.output(), /\/draft/);
+  assert.doesNotMatch(h.output(), /Не удалось получить подтверждение от CRM/);
+  assert.deepEqual(methods, ["GET"]);
+  h.close();
+});
+
 test("end-to-end text → preview → explicit confirmation; no save on plain 'всё ок'", async () => {
   const g = new DemoCrmGateway(); const h = harness(g);
   await h.text("/start"); await h.click("new:buyer");
@@ -171,4 +198,33 @@ test("HTTP rejects a response for a different draft or confirmation revision", a
   await assert.rejects(wrong.get(actor, d.id), /invalid/);
   const changed = new HttpCrmGateway("https://crm.example", "secret", async () => Response.json({ ...d, revision: d.revision + 1 }));
   await assert.rejects(changed.confirm(actor, d.id, d.revision), /invalid/);
+});
+
+
+test("short role commands create drafts and help explains phone-only requirement", async () => {
+  const gateway = new DemoCrmGateway();
+  const h = harness(gateway);
+  await h.text("/buyer");
+  assert.equal((await gateway.current(actor))?.role, "buyer");
+  await h.text("/seller");
+  assert.equal((await gateway.current(actor))?.role, "seller");
+  await h.text("/help");
+  assert.match(h.output(), /Обязателен только телефон/);
+  await h.text("/edit");
+  assert.match(h.output(), /при подключении CRM/);
+  h.close();
+});
+
+test("Telegram menu registers all commands and enables the menu button", async () => {
+  const { registerMenu, commands } = await import("../src/menu.js");
+  const h = harness(new DemoCrmGateway());
+  const calls: { method: string; payload: unknown }[] = [];
+  h.bot.api.config.use(async (_prev, method, payload) => {
+    calls.push({ method, payload });
+    return { ok: true, result: true } as never;
+  });
+  await registerMenu(h.bot);
+  assert.deepEqual(calls.map(call => call.method), ["setMyCommands", "setChatMenuButton"]);
+  assert.deepEqual(commands.map(command => command.command), ["buyer", "seller", "edit", "draft", "usage", "help"]);
+  h.close();
 });
