@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@rieltordeals/domain"],
   allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
-    return [{ source: "/", destination: "/landing/index.html" }];
+    return {
+      beforeFiles: [{ source: "/", destination: "/landing/index.html" }],
+    };
   },
 };
 
