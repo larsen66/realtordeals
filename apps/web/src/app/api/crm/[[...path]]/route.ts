@@ -32,12 +32,18 @@ async function forward(request: Request, context: { params: Promise<{ path?: str
       redirect: "manual",
       cache: "no-store",
     });
-    const responseHeaders = new Headers(upstream.headers);
-    for (const name of ["connection", "content-length", "transfer-encoding"]) responseHeaders.delete(name);
-    return new Response(upstream.body, {
+    const contentType = upstream.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      return Response.json(await upstream.json(), {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: { "cache-control": "no-store" },
+      });
+    }
+    return new Response(await upstream.text(), {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: responseHeaders,
+      headers: { "content-type": contentType || "text/plain; charset=utf-8" },
     });
   } catch {
     return Response.json({ error: "CRM API is unavailable" }, { status: 502 });
