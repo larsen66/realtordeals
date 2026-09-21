@@ -38,7 +38,7 @@ async function processUpdate(update: TelegramUpdate) {
 
 export async function handleWebhook(
   request: Request,
-  defer: (promise: Promise<unknown>) => void = waitUntil,
+  deferOrContext: ((promise: Promise<unknown>) => void) | unknown = waitUntil,
   handle: (update: TelegramUpdate) => Promise<void> = processUpdate,
 ) {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
@@ -58,6 +58,7 @@ export async function handleWebhook(
   if (!parsed.success) return Response.json({ error: "invalid update" }, { status: 400 });
 
   const update = parsed.data as unknown as TelegramUpdate;
+  const defer = typeof deferOrContext === "function" ? deferOrContext : waitUntil;
   defer(handle(update).catch(() => {
     console.error(JSON.stringify({ service: "bot", event: "update.background_failed", updateId: update.update_id }));
   }));
