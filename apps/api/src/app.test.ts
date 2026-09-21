@@ -420,7 +420,7 @@ test("bot requires only phone for both roles and rejects confirmation without it
     const card = (await request(`/cards/${saved.body.cardId}`, "GET")).body.card;
     assert.equal(card.name, null);
     assert.equal(card.budget, null);
-    assert.deepEqual(card.fields, {});
+    assert.deepEqual(card.fields, { paymentMethods: [] });
   }
 });
 

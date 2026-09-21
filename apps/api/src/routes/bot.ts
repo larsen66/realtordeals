@@ -238,7 +238,9 @@ botRouter.post("/drafts/:id/confirm", async (req, res) => {
     source: candidate.source,
     budget: candidate.budget,
     temperature: candidate.temperature,
-    payment: candidate.payment,
+    payment: candidate.payment === null
+      ? []
+      : Array.isArray(candidate.payment) ? candidate.payment : [candidate.payment],
     promisedCallAt: candidate.promisedCallAt,
     fields: candidate.fields,
     sourceText: draft.sourceTexts.join("\n\n"),

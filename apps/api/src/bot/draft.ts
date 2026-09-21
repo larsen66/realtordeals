@@ -12,7 +12,10 @@ export const candidateSchema = z.object({
   source: optionalText,
   budget: optionalText,
   temperature: z.enum(["cold", "warm", "hot"]).nullable(),
-  payment: z.enum(["cash", "mortgage"]).nullable(),
+  payment: z.union([
+    z.enum(["cash", "mortgage", "installment"]),
+    z.enum(["cash", "mortgage", "installment"]).array(),
+  ]).nullable(),
   promisedCallAt: z.string().datetime({ offset: true }).nullable(),
   fields: z.record(z.string(), fieldValue),
   notes: z.array(z.string()),
