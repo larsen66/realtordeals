@@ -2,6 +2,7 @@
   "name": "api",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "pnpm --filter @rieltordeals/domain build && tsc",
