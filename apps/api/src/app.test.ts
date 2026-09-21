@@ -406,6 +406,38 @@ const phoneCandidate = (phone: string | null) => ({ name: null, phone, objectTyp
   address: null, source: null, budget: null, temperature: null, payment: null,
   promisedCallAt: null, fields: {}, notes: [] });
 
+test("bot payment choices and financing details survive preview, follow-ups, confirmation and editing", async () => {
+  const { body: draft } = await botRequest("/drafts", { role: "buyer" }, "multi-payment");
+  const submit = (extraction: unknown, updateId: number) => botRequest(`/drafts/${draft.id}/messages`, {
+    kind: "text", text: "Уточнение оплаты", messageId: updateId, updateId, extraction,
+  });
+  const first = await submit({ ...phoneCandidate("+79990009932"), payment: ["cash", "installment"],
+    fields: { initialPayment: "2 млн рублей", monthlyPayment: "50 тысяч рублей" } }, 920);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.fields.find((field: any) => field.key === "payment").value, "нал, рассрочка");
+  assert.equal(first.body.fields.find((field: any) => field.key === "initialPayment").label, "Первоначальный взнос");
+  const followup = await submit({ ...phoneCandidate(null), budget: "8 млн" }, 921);
+  assert.equal(followup.body.fields.find((field: any) => field.key === "payment").value, "нал, рассрочка");
+  const saved = await botRequest(`/drafts/${draft.id}/confirm`, { revision: followup.body.revision, confirmed: true });
+  assert.equal(saved.status, 200);
+  const card = (await request(`/cards/${saved.body.cardId}`, "GET")).body.card;
+  assert.deepEqual(card.payment, ["cash", "installment"]);
+  assert.deepEqual(card.fields.paymentMethods, card.payment);
+  assert.equal(card.fields.initialPayment, "2 млн рублей");
+  assert.equal(card.fields.monthlyPayment, "50 тысяч рублей");
+  const { body: edit } = await botRequest(`/clients/${card.id}/edit`, {}, "multi-payment-edit");
+  assert.equal(edit.fields.find((field: any) => field.key === "payment").value, "нал, рассрочка");
+  for (const [index, payment] of [["cash", "mortgage", "installment"], ["installment"], []].entries()) {
+    const changed = await botRequest(`/drafts/${edit.id}/messages`, {
+      kind: "text", text: "Изменить способы оплаты", messageId: 930 + index, updateId: 930 + index,
+      extraction: { ...phoneCandidate(null), payment },
+    });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.body.fields.find((field: any) => field.key === "payment").value,
+      ["нал, ипотека, рассрочка", "рассрочка", ""][index]);
+  }
+});
+
 test("bot requires only phone for both roles and rejects confirmation without it", async () => {
   for (const role of ["buyer", "seller"]) {
     const { body: draft } = await botRequest("/drafts", { role }, `phone-only-${role}`);

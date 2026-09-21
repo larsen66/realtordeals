@@ -6,6 +6,34 @@ import { createUsageLog, draftUsageContext } from "../src/usage.js";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CrmExtractor } from "../src/extraction.js";
+
+test("buyer extraction accepts every payment method and financing details for text and voice", async () => {
+  const candidate = { name: null, phone: null, objectType: null, address: null, source: null,
+    budget: null, temperature: null, payment: ["cash", "installment"], promisedCallAt: null,
+    fields: { initialPayment: "2 млн рублей", monthlyPayment: "50 тысяч рублей", location: null }, notes: [] };
+  const agent = new OpenAiAgent(config, async (url, init) => {
+    if (String(url).endsWith("/transcriptions")) return Response.json({ text: "Наличные или рассрочка, взнос 2 млн, платёж 50 тысяч" });
+    const body = JSON.parse(init!.body as string);
+    const properties = body.text.format.schema.properties;
+    assert.deepEqual(properties.payment.type, ["array", "null"]);
+    assert.ok(properties.fields.required.includes("initialPayment"));
+    assert.ok(properties.fields.required.includes("monthlyPayment"));
+    assert.equal(JSON.parse(body.input[0].content).currentFields.payment, "нал");
+    assert.match(body.instructions, /При дополнении способов оплаты/);
+    return completion(JSON.stringify(candidate));
+  });
+  const extractor = new CrmExtractor(agent);
+  const text = await extractor.fromText("buyer", "Ещё рассматривает рассрочку", { payment: "нал" });
+  assert.deepEqual(text.payment, ["cash", "installment"]);
+  assert.deepEqual(text.fields, { initialPayment: "2 млн рублей", monthlyPayment: "50 тысяч рублей" });
+  const voice = await extractor.fromVoice("buyer", new File(["test"], "voice.ogg"), { payment: "нал" });
+  assert.deepEqual(voice.candidate, text);
+  for (const payment of [["cash", "mortgage", "installment"], ["installment"], [], null]) {
+    const next = new CrmExtractor(new OpenAiAgent(config, async () => completion(JSON.stringify({ ...candidate, payment }))));
+    assert.deepEqual((await next.fromText("buyer", "Уточнение оплаты", {})).payment, payment);
+  }
+});
 
 const config = { apiKey: "offline-test-key", textModel: "test-text-model", transcriptionModel: "test-audio-model" };
 test("draft totals isolate concurrent clients, survive restart and disclose missing usage", async () => {

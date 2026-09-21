@@ -24,7 +24,7 @@ test("webhook acknowledges a valid update and schedules processing", async () =>
     method: "POST",
     headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": "test_webhook-secret" },
     body: JSON.stringify({ update_id: 42, message: { message_id: 1 } }),
-  }), promise => { scheduled = promise; }, async update => { handled = update; });
+  }), (promise: Promise<unknown>) => { scheduled = promise; }, async update => { handled = update; });
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true });

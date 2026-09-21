@@ -12,7 +12,7 @@ const candidateSchema = z.object({
   source: z.string().nullable(),
   budget: z.string().nullable(),
   temperature: z.enum(["cold", "warm", "hot"]).nullable(),
-  payment: z.enum(["cash", "mortgage", "installment"]).nullable(),
+  payment: z.array(z.enum(["cash", "mortgage", "installment"])).nullable(),
   promisedCallAt: z.string().datetime({ offset: true }).nullable(),
   fields: z.record(z.string(), z.union([z.string(), z.boolean(), z.null()])),
   notes: z.array(z.string()),
@@ -28,6 +28,7 @@ const sellerProperties = {
   maternityCapital: nullableBoolean, priceUnderstatement: nullableBoolean,
 };
 const buyerProperties = {
+  initialPayment: nullableText, monthlyPayment: nullableText,
   selectionNotes: nullableText, selectionLinks: nullableText, purchaseWhat: nullableText,
   purchaseMethod: nullableText, location: nullableText, locationWhy: nullableText, area: nullableText,
   layout: nullableText, finish: { type: ["string", "null"], enum: ["rough", "prefinish", "renovated", null] },
@@ -45,7 +46,11 @@ function jsonSchemaFor(role: Role): Record<string, unknown> {
       name: nullableText, phone: nullableText, objectType: nullableText, address: nullableText,
       source: nullableText, budget: nullableText,
       temperature: { type: ["string", "null"], enum: ["cold", "warm", "hot", null] },
-      payment: { type: ["string", "null"], enum: ["cash", "mortgage", "installment", null] },
+      payment: {
+        type: ["array", "null"],
+        items: { type: "string", enum: ["cash", "mortgage", "installment"] },
+        description: "Все рассматриваемые способы оплаты. null — без изменений; [] — явный отказ от всех способов. При дополнении сохрани прежние варианты из currentFields.payment; при явной замене или отказе удали отмененные.",
+      },
       promisedCallAt: nullableText,
       fields: {
         type: "object", additionalProperties: false,
@@ -62,7 +67,7 @@ function clean(candidate: ExtractionCandidate): ExtractionCandidate {
 }
 
 export class CrmExtractor {
-  constructor(private agent: OpenAiAgent) {}
+  constructor(private agent: Pick<OpenAiAgent, "extract" | "transcribe">) {}
 
   async fromText(role: Role, sourceText: string, currentFields: Record<string, unknown>, operation: "text_analysis" | "voice_analysis" = "text_analysis"): Promise<ExtractionCandidate> {
     const schema: CrmExtractionSchema<ExtractionCandidate> = {

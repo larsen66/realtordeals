@@ -1,7 +1,7 @@
 import { createSupabaseClient } from "../lib/supabase.js";
 import { Router } from "express";
 import { z } from "zod";
-import { CardValidationError } from "@rieltordeals/domain";
+import { CardValidationError, paymentLabels, paymentSelectionSchema } from "@rieltordeals/domain";
 import { candidateSchema, type Candidate, type DraftRecord } from "../bot/draft.js";
 import { getDraftStore } from "../bot/store.js";
 import { getCardStore } from "../cards/store.js";
@@ -19,6 +19,7 @@ const messageSchema = z.object({
 });
 
 const labels: Record<string, string> = {
+  payment: "Оплата", initialPayment: "Первоначальный взнос", monthlyPayment: "Ежемесячный платёж",
   name: "Имя", phone: "Телефон", objectType: "Тип объекта", address: "Адрес", source: "Источник", budget: "Бюджет",
   price: "Цена", rooms: "Комнаты", area: "Площадь", floor: "Этаж", floors: "Этажность", mortgage: "Ипотека",
   arrests: "Аресты", ownersCount: "Собственники", saleGoal: "Цель продажи", saleSpeed: "Срок продажи",
@@ -60,6 +61,7 @@ function view(draft: DraftRecord) {
   const values: [string, string | boolean | null][] = [
     ["name", candidate.name], ["phone", candidate.phone], ["objectType", candidate.objectType],
     ["address", candidate.address], ["budget", candidate.budget], ...Object.entries(candidate.fields),
+    ["payment", candidate.payment === null ? null : paymentSelectionSchema.parse(candidate.payment).map(payment => paymentLabels[payment]).join(", ")],
   ];
   const issues = candidate.phone?.trim() ? [] : ["Телефон: продиктуйте или напишите номер для сохранения карточки"];
   const status = draft.status === "confirmed" ? "confirmed" : issues.length ? "needs_input" : "ready";
