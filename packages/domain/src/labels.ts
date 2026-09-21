@@ -29,6 +29,7 @@ export const temperatureLabels: Record<Temperature, string> = {
 export const paymentLabels: Record<Payment, string> = {
   cash: "нал",
   mortgage: "ипотека",
+  installment: "рассрочка",
 };
 
 export const stageLabels: Record<BuyerStage, string> = {

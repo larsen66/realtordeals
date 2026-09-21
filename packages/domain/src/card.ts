@@ -3,7 +3,6 @@ import {
   buyerStageSchema,
   cardRoleSchema,
   dealTypeSchema,
-  paymentSchema,
   referralStatusSchema,
   selectionStatusSchema,
   temperatureSchema,
@@ -12,6 +11,7 @@ import {
   type ReferralStatus,
   type SelectionStatus,
 } from "./enums.js";
+import { paymentSelectionSchema } from "./payments.js";
 import { parseCardFields } from "./fields.js";
 import { assertCanPersistCard } from "./persist.js";
 import { normalizeStageStatuses } from "./stage-status.js";
@@ -38,7 +38,7 @@ export const createCardInputSchema = z.object({
   source: optionalText,
   budget: optionalText,
   temperature: temperatureSchema.optional().nullable(),
-  payment: paymentSchema.optional().nullable(),
+  payment: paymentSelectionSchema.optional(),
   stage: buyerStageSchema.optional().nullable(),
   selectionStatus: selectionStatusSchema.optional().nullable(),
   referralStatus: referralStatusSchema.optional().nullable(),
@@ -117,6 +117,8 @@ export function parseCreateCardInput(input: unknown) {
   }
 
   const fields = parseFieldsOrThrow(persist.role, parsed.data.fields);
+  const payment = parsed.data.payment ?? fields.paymentMethods ?? [];
+  fields.paymentMethods = payment;
   const stage =
     persist.role === "buyer"
       ? (parsed.data.stage ?? defaultStageFor("buyer"))
@@ -131,6 +133,7 @@ export function parseCreateCardInput(input: unknown) {
     ...parsed.data,
     ...persist,
     phone: persist.phone,
+    payment,
     stage,
     ...extras,
     fields,
@@ -168,10 +171,13 @@ export function parsePatchCardInput(
     ]);
   }
 
-  const fields =
+  let fields =
     parsed.data.fields !== undefined
       ? parseFieldsOrThrow(role, parsed.data.fields)
       : undefined;
+
+  const payment = parsed.data.payment ?? fields?.paymentMethods;
+  if (payment !== undefined) fields = { ...fields, paymentMethods: payment };
 
   const stageTouched =
     parsed.data.stage !== undefined ||
@@ -198,6 +204,7 @@ export function parsePatchCardInput(
   return {
     ...parsed.data,
     role: parsed.data.role,
+    payment,
     stage: role === "seller" && parsed.data.role === "seller" ? null : parsed.data.stage,
     ...extras,
     fields,

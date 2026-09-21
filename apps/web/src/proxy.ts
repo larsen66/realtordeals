@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/utils/supabase/middleware";
 
 function unauthorized() {
   return new NextResponse("Authentication required", {
@@ -7,7 +8,7 @@ function unauthorized() {
   });
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const expectedUser = process.env.CRM_WEB_USER?.trim();
   const expectedPassword = process.env.CRM_WEB_PASSWORD;
   if (!expectedUser || !expectedPassword) {
@@ -28,9 +29,12 @@ export function proxy(request: NextRequest) {
     return unauthorized();
   }
 
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    return updateSession(request);
+  }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/crm/:path*"],
+  matcher: ["/crm/:path*", "/api/crm/:path*"],
 };

@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  paymentLabels,
   referralStatusLabels,
   stageLabels,
   temperatureLabels,
   type BuyerStage,
-  type Payment,
   type ReferralStatus,
   type SelectionStatus,
   type Temperature,
@@ -14,9 +12,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { updateCard, type Card } from "@/lib/cards";
+import { PaymentOptions } from "./payment-options";
 import { InlineSelect } from "./inline-select";
 import {
-  paymentTone,
   referralStatusTone,
   selectionStatusTone,
   stageTone,
@@ -37,10 +35,6 @@ export type StatusCard = Pick<
 const temperatureOptions = Object.entries(temperatureLabels).map(
   ([value, label]) => ({ value, label }),
 );
-const paymentOptions = Object.entries(paymentLabels).map(([value, label]) => ({
-  value,
-  label,
-}));
 const stageOptions = Object.entries(stageLabels).map(([value, label]) => ({
   value,
   label,
@@ -91,21 +85,37 @@ export function TemperatureControl({ card }: { card: StatusCard }) {
 }
 
 export function PaymentControl({ card }: { card: StatusCard }) {
-  const { pending, patch } = useCardPatch(card.id);
-  if (card.role !== "buyer") {
-    return <Dash />;
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState(card.payment);
+  const [synced, setSynced] = useState(card.payment);
+  if (card.payment !== synced) {
+    setSynced(card.payment);
+    setSelected(card.payment);
   }
+  if (card.role !== "buyer") return <Dash />;
   return (
-    <InlineSelect
-      label="Оплата клиента"
-      value={card.payment ?? ""}
-      disabled={pending}
-      tone={paymentTone(card.payment)}
-      options={paymentOptions}
-      onChange={(value) =>
-        patch({ payment: (value || null) as Payment | null })
-      }
-    />
+    <div className="space-y-1">
+      <PaymentOptions
+        value={selected}
+        disabled={pending}
+        onChange={async (payment) => {
+          setPending(true);
+          setError("");
+          try {
+            const result = await updateCard(card.id, { payment });
+            setSelected(result.card.payment);
+            router.refresh();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Не удалось сохранить");
+          } finally {
+            setPending(false);
+          }
+        }}
+      />
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }
 

@@ -6,9 +6,9 @@
     "dev": "pnpm --filter @rieltordeals/domain build && pnpm --filter web --filter api --parallel dev",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "build": "pnpm --filter @rieltordeals/domain --filter web --filter api build",
+    "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter domain --filter api test"
+    "test": "pnpm -r test"
   },
   "devDependencies": {
     "vercel": "59.23.2"

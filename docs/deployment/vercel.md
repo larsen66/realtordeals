@@ -4,6 +4,9 @@
 проекта нужно включить доступ к файлам вне Root Directory: приложения импортируют
 workspace-пакеты из этого же монорепозитория.
 
+Для всех трёх проектов Production Branch: `main`. Все приложения и общие пакеты
+хранятся в этой ветке; отдельная ветка для бота при деплое не нужна.
+
 ## API
 
 - Root Directory: `apps/api`
@@ -33,7 +36,7 @@ workspace-пакеты из этого же монорепозитория.
 
 В браузере запросы CRM идут на `/api/crm/*`. Next.js Route Handler добавляет API-токен
 на сервере, поэтому токен не попадает в клиентский JavaScript. В production путь
-`/crm/*` закрыт HTTP Basic Authentication.
+`/crm/*` и `/api/crm/*` закрыты HTTP Basic Authentication.
 
 ## Telegram bot
 

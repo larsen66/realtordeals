@@ -37,6 +37,7 @@ export {
   temperatureLabels,
   whoseApartmentLabels,
 } from "./labels.js";
+export { paymentSelectionSchema } from "./payments.js";
 export { normalizeStageStatuses } from "./stage-status.js";
 export { formatRemainingDays } from "./remaining-days.js";
 export { tagsFor } from "./tags.js";

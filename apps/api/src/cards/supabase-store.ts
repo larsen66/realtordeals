@@ -65,7 +65,9 @@ export function createSupabaseStore(
       if (patch.source !== undefined) row.source = patch.source;
       if (patch.budget !== undefined) row.budget = patch.budget;
       if (patch.temperature !== undefined) row.temperature = patch.temperature;
-      if (patch.payment !== undefined) row.payment = patch.payment;
+      if (patch.payment !== undefined) {
+        row.payment = patch.payment.find((value) => value === "cash" || value === "mortgage") ?? null;
+      }
       if (patch.stage !== undefined) row.stage = patch.stage;
       if (patch.selectionStatus !== undefined) {
         row.selection_status = patch.selectionStatus;

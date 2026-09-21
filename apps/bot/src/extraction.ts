@@ -12,7 +12,7 @@ const candidateSchema = z.object({
   source: z.string().nullable(),
   budget: z.string().nullable(),
   temperature: z.enum(["cold", "warm", "hot"]).nullable(),
-  payment: z.enum(["cash", "mortgage"]).nullable(),
+  payment: z.union([z.enum(["cash", "mortgage", "installment"]), z.array(z.enum(["cash", "mortgage", "installment"]))]).nullable(),
   promisedCallAt: z.string().datetime({ offset: true }).nullable(),
   fields: z.record(z.string(), z.union([z.string(), z.boolean(), z.null()])),
   notes: z.array(z.string()),
@@ -45,7 +45,7 @@ function jsonSchemaFor(role: Role): Record<string, unknown> {
       name: nullableText, phone: nullableText, objectType: nullableText, address: nullableText,
       source: nullableText, budget: nullableText,
       temperature: { type: ["string", "null"], enum: ["cold", "warm", "hot", null] },
-      payment: { type: ["string", "null"], enum: ["cash", "mortgage", null] },
+      payment: { type: ["array", "null"], items: { type: "string", enum: ["cash", "mortgage", "installment"] } },
       promisedCallAt: nullableText,
       fields: {
         type: "object", additionalProperties: false,

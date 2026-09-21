@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paymentSelectionSchema } from "@rieltordeals/domain";
 import type { CardDto, CardInsert } from "../cards/types.js";
 
 const optionalText = z.string().nullable();
@@ -12,7 +13,7 @@ export const candidateSchema = z.object({
   source: optionalText,
   budget: optionalText,
   temperature: z.enum(["cold", "warm", "hot"]).nullable(),
-  payment: z.enum(["cash", "mortgage"]).nullable(),
+  payment: paymentSelectionSchema.nullable(),
   promisedCallAt: z.string().datetime({ offset: true }).nullable(),
   fields: z.record(z.string(), fieldValue),
   notes: z.array(z.string()),
