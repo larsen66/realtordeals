@@ -12,3 +12,6 @@ out
 coverage
 .playwright-cli/
 output/playwright/
+apps/bot/.data/
+
+.vercel/

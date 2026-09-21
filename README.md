@@ -28,6 +28,7 @@ Next.js использует `src/utils/supabase/client.ts` и `server.ts`. В S
 ```bash
 pnpm install
 cp .env.example .env
+cp apps/web/.env.example apps/web/.env.local
 supabase start
 ```
 
@@ -37,6 +38,9 @@ supabase start
 SUPABASE_URL=http://127.0.0.1:55421
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
+
+Укажи одинаковый `CRM_API_TOKEN` в `.env` и `apps/web/.env.local`. В production
+CRM закрывается значениями `CRM_WEB_USER` и `CRM_WEB_PASSWORD`.
 
 Ключи Supabase только в API, не в `apps/web`.
 

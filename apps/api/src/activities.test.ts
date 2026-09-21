@@ -10,12 +10,13 @@ import { createMemoryStore } from "./cards/memory-store.js";
 
 setActivityStore(createMemoryActivityStore());
 setCardStore(createMemoryStore());
+process.env.CRM_API_TOKEN = "test-crm-api-token";
 const server = app.listen(0);
 await new Promise<void>(resolve => server.once("listening", resolve));
 after(() => server.close());
 async function request(path: string, method = "GET", input?: unknown) {
   const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}${path}`, {
-    method, headers: { "content-type": "application/json" }, body: input === undefined ? undefined : JSON.stringify(input),
+    method, headers: { "content-type": "application/json", authorization: "Bearer test-crm-api-token" }, body: input === undefined ? undefined : JSON.stringify(input),
   });
   return { status: response.status, body: await response.json() };
 }

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @rieltordeals/worker build && pnpm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/telegram.ts": {
+      "maxDuration": 300
+    }
+  }
+}
