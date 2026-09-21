@@ -1,16 +1,6 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "express",
   "installCommand": "pnpm install --frozen-lockfile",
-  "builds": [
-    {
-      "src": "vercel-entry.mjs",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "vercel-entry.mjs"
-    }
-  ]
+  "buildCommand": "pnpm --filter @rieltordeals/domain build && pnpm run build"
 }
