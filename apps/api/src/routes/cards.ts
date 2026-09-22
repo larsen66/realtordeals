@@ -67,6 +67,15 @@ cardsRouter.patch("/:id", async (req, res) => {
   res.json({ card });
 });
 
+cardsRouter.delete("/:id", async (req, res) => {
+  const deleted = await getCardStore().delete(req.params.id);
+  if (!deleted) {
+    res.status(404).json({ error: "card not found" });
+    return;
+  }
+  res.json({ deleted: true });
+});
+
 cardsRouter.post("/:id/tasks", async (req, res) => {
   const store = getCardStore();
   const current = await store.getById(req.params.id);
