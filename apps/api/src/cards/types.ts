@@ -47,4 +47,5 @@ export type CardStore = {
   getById(id: string): Promise<CardDto | null>;
   insert(input: CardInsert): Promise<CardDto>;
   update(id: string, patch: CardPatch, expectedUpdatedAt?: string): Promise<CardDto | null>;
+  delete(id: string): Promise<boolean>;
 };

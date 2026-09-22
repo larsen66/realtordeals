@@ -95,5 +95,16 @@ export function createSupabaseStore(
       }
       return data ? cardFromRow(data as CardRow) : null;
     },
+
+    async delete(id) {
+      const { error, count } = await client
+        .from("cards")
+        .delete({ count: "exact" })
+        .eq("id", id);
+      if (error) {
+        throw error;
+      }
+      return count === 1;
+    },
   };
 }
