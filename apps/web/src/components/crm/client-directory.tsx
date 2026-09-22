@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { PaymentControl, StageControl, StageStatusControl, TemperatureControl } from "./card-status-controls";
 import { BuyerTasksSummary } from "./buyer-tasks-summary";
 import { DirectoryFilterForm } from "./directory-filter-form";
+import { SwipeableCardRow } from "./swipeable-card-row";
 
 
 export type DirectoryMode = "buyers" | "sellers" | "selections" | "viewings" | "deals";
@@ -64,6 +65,12 @@ function requestSummary(card: Card) {
   ].filter(Boolean).join(" · ") || "Запрос не заполнен";
 }
 
+function sourceLabel(value: string | null) {
+  const source = value?.trim();
+  if (!source) return "-";
+  return source.length > 28 ? `${source.slice(0, 28)}…` : source;
+}
+
 export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; params: DirectoryParams }) {
   const page = pages[mode];
   const path = `/crm/${mode}`;
@@ -113,10 +120,10 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
   });
   const filteredActive = Boolean(query || temperature || payment || (!fixedStage && stage) || source || objectType || selectionStatus || sort !== "newest");
   const heads = seller
-    ? ["Продавец / телефон", "Тип", "Адрес", "Цена", "Температура", "ДР"]
+    ? ["Продавец / телефон", "Тип", "Адрес", "Цена", "Температура", "ДР", ""]
     : pipeline
-      ? ["Покупатель / телефон", "Бюджет", "Запрос", "Локация", "Температура", mode === "selections" ? "Статус подборки" : "Оплата"]
-      : ["Покупатель / телефон", "Задачи", "Температура", "Этап", "Статус этапа", "Источник", "Бюджет", "Тип объекта", "Оплата", "ДР"];
+      ? ["Покупатель / телефон", "Бюджет", "Запрос", "Локация", "Температура", mode === "selections" ? "Статус подборки" : "Оплата", ""]
+      : ["Покупатель / телефон", "Задачи", "Температура", "Этап", "Статус этапа", "Источник", "Бюджет", "Тип объекта", "Оплата", "ДР", ""];
   const cellClass = "px-4 py-4 text-[12px] text-foreground/70";
 
   return (
@@ -181,7 +188,7 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
                 {filteredActive && <Link href={path} className="mt-3 block text-foreground/80 underline">Сбросить фильтры</Link>}
               </TableCell></TableRow>
             ) : filtered.map((card) => (
-              <TableRow key={card.id} className="border-border/70">
+              <SwipeableCardRow key={card.id} cardId={card.id}>
                 <TableCell className={cellClass}>
                   <Link href={`/crm/cards/${card.id}`} className="font-semibold text-foreground hover:underline">{card.name ?? "Без имени"}</Link>
                   <a href={`tel:${card.phone}`} className="mt-1 block text-[11px] text-muted-foreground hover:underline">{card.phone}</a>
@@ -203,13 +210,13 @@ export async function ClientDirectory({ mode, params }: { mode: DirectoryMode; p
                   <TableCell className={cellClass}><TemperatureControl card={card} /></TableCell>
                   <TableCell className={cellClass}><StageControl card={card} /></TableCell>
                   <TableCell className={cellClass}><StageStatusControl card={card} /></TableCell>
-                  <TableCell className={cellClass}>{card.source ?? "-"}</TableCell>
+                  <TableCell className={`${cellClass} w-[180px] max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap`} title={card.source ?? undefined}>{sourceLabel(card.source)}</TableCell>
                   <TableCell className={cellClass}>{card.budget ?? "-"}</TableCell>
                   <TableCell className={cellClass}>{card.objectType ?? "-"}</TableCell>
                   <TableCell className={cellClass}><PaymentControl card={card} /></TableCell>
                   <TableCell className={cellClass}>{isBirthdaySoon(card.birthday) ? formatDay(card.birthday) : null}</TableCell>
                 </>}
-              </TableRow>
+              </SwipeableCardRow>
             ))}
           </TableBody>
         </Table>

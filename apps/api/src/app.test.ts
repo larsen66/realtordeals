@@ -99,6 +99,27 @@ test("PATCH /cards moves a buyer to viewing and clears selection status", async 
   assert.equal(body.card.selectionStatus, null);
 });
 
+test("DELETE /cards removes only the requested card", async () => {
+  const first = await crmFetch("/cards", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ role: "buyer", dealType: "purchase", phone: "+79990001123" }),
+  });
+  const second = await crmFetch("/cards", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ role: "buyer", dealType: "purchase", phone: "+79990001124" }),
+  });
+  const firstCard = (await first.json()) as { card: { id: string } };
+  const secondCard = (await second.json()) as { card: { id: string } };
+
+  const deleted = await crmFetch(`/cards/${firstCard.card.id}`, { method: "DELETE" });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), { deleted: true });
+  assert.equal((await crmFetch(`/cards/${firstCard.card.id}`)).status, 404);
+  assert.equal((await crmFetch(`/cards/${secondCard.card.id}`)).status, 200);
+});
+
 test("GET /statuses returns temperatures and stages from domain", async () => {
   const res = await crmFetch("/statuses");
   assert.equal(res.status, 200);

@@ -74,6 +74,10 @@ export function updateCard(id: string, body: unknown) {
   });
 }
 
+export function deleteCard(id: string) {
+  return apiJson<{ deleted: true }>(`/cards/${id}`, { method: "DELETE" });
+}
+
 export function formatDay(value: string | null) {
   if (!value) {
     return "—";

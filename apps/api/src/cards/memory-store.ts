@@ -56,5 +56,9 @@ export function createMemoryStore(seed: CardDto[] = []): CardStore {
       cards.set(id, next);
       return next;
     },
+
+    async delete(id) {
+      return cards.delete(id);
+    },
   };
 }
