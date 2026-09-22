@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StageStatusControl } from "./card-status-controls";
+import { DeleteCardButton } from "./delete-card-button";
 
 function ReferralComposer() {
   const router = useRouter();
@@ -68,7 +69,8 @@ function ReferralComment({ card }: { card: Card }) {
 
 export function ReferralsDirectory({ cards }: { cards: Card[] }) {
   const [query, setQuery] = useState("");
-  const visible = cards.filter(card => [card.name, card.phone, fieldString(card, "referralComment")].filter(Boolean).join(" ").toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const visible = cards.filter(card => !deletedIds.has(card.id) && [card.name, card.phone, fieldString(card, "referralComment")].filter(Boolean).join(" ").toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
   return <div className="space-y-6">
     <ReferralComposer />
     <div className="relative"><Search aria-hidden className="pointer-events-none absolute top-3 left-3 size-4 text-muted-foreground" />
@@ -78,11 +80,12 @@ export function ReferralsDirectory({ cards }: { cards: Card[] }) {
       <div className="flex items-center gap-2 border-b px-5 py-4"><h2 className="font-semibold">Рефералы</h2><span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{visible.length}</span></div>
       {!visible.length ? <p className="px-5 py-10 text-center text-sm text-muted-foreground">{cards.length ? "По вашему запросу рефералы не найдены." : "Пока нет рефералов. Нажмите «Добавить реферала», чтобы создать первого."}</p>
         : <div className="overflow-x-auto"><table className="w-full min-w-[640px] table-fixed text-left text-sm">
-          <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="w-1/4 px-5 py-3 font-normal">Реферал / телефон</th><th className="w-[170px] px-5 py-3 font-normal">Статус</th><th className="px-5 py-3 font-normal">Комментарий по рефералу</th></tr></thead>
+      <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="w-1/4 px-5 py-3 font-normal">Реферал / телефон</th><th className="w-[170px] px-5 py-3 font-normal">Статус</th><th className="px-5 py-3 font-normal">Комментарий по рефералу</th><th className="w-16 px-5 py-3 font-normal"><span className="sr-only">Действия</span></th></tr></thead>
           <tbody>{visible.map(card => <tr key={card.id} className="border-t align-top">
             <td className="px-5 py-5"><Link className="break-words font-medium hover:underline" href={`/crm/cards/${card.id}`}>{card.name || card.phone}</Link><p className="mt-1 break-words text-xs text-muted-foreground">{card.phone}</p></td>
             <td className="px-5 py-5"><StageStatusControl card={card} /></td>
             <td className="px-5 py-5"><ReferralComment card={card} /></td>
+            <td className="px-5 py-5"><DeleteCardButton cardId={card.id} onDeleted={() => setDeletedIds(current => { const next = new Set(current); next.add(card.id); return next; })} /></td>
           </tr>)}</tbody>
         </table></div>}
     </section>

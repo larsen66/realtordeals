@@ -17,6 +17,7 @@ export function SwipeableCardRow({
   const startOffset = useRef(0);
   const currentOffset = useRef(0);
   const dragged = useRef(false);
+  const [deleted, setDeleted] = useState(false);
 
   function onPointerDown(event: PointerEvent<HTMLTableRowElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -56,6 +57,8 @@ export function SwipeableCardRow({
     }
   }
 
+  if (deleted) return null;
+
   return (
     <tr
       className="group border-border/70 transition-transform duration-200 ease-out hover:bg-muted/50"
@@ -68,7 +71,7 @@ export function SwipeableCardRow({
     >
       {children}
       <td className="sticky right-0 z-10 w-0 bg-card p-0 align-middle">
-        <DeleteCardButton cardId={cardId} visible={offset < 0} />
+        <DeleteCardButton cardId={cardId} visible={offset < 0} onDeleted={() => setDeleted(true)} />
       </td>
     </tr>
   );

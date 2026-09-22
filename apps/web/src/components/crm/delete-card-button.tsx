@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { Trash2, X } from "lucide-react";
 import { deleteCard } from "@/lib/cards";
 
-export function DeleteCardButton({ cardId, visible = true }: { cardId: string; visible?: boolean }) {
+export function DeleteCardButton({ cardId, visible = true, onDeleted }: {
+  cardId: string;
+  visible?: boolean;
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -17,6 +21,7 @@ export function DeleteCardButton({ cardId, visible = true }: { cardId: string; v
     try {
       await deleteCard(cardId);
       setConfirmOpen(false);
+      onDeleted?.();
       router.refresh();
     } catch (cause) {
       setDeleting(false);
