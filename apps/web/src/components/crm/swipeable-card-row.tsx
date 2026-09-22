@@ -21,7 +21,10 @@ export function SwipeableCardRow({
 
   function onPointerDown(event: PointerEvent<HTMLTableRowElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest('button[aria-label="Удалить лида"]')) return;
+    if (event.target instanceof Element && event.target.closest('[data-delete-card-control]')) {
+      dragged.current = false;
+      return;
+    }
     startX.current = event.clientX;
     startOffset.current = offset;
     currentOffset.current = offset;
@@ -50,6 +53,9 @@ export function SwipeableCardRow({
   }
 
   function onClickCapture(event: MouseEvent<HTMLTableRowElement>) {
+    // The confirmation dialog is rendered from inside this row. Do not let
+    // swipe click-suppression cancel its НЕТ/ДА buttons.
+    if (event.target instanceof Element && event.target.closest('[data-delete-card-control]')) return;
     if (dragged.current) {
       event.preventDefault();
       event.stopPropagation();
