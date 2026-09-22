@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Trash2, X } from "lucide-react";
 import { deleteCard } from "@/lib/cards";
@@ -41,7 +42,7 @@ export function DeleteCardButton({ cardId, visible = true, onDeleted }: {
       >
         <Trash2 className="size-4" aria-hidden="true" />
       </button>
-      {confirmOpen && (
+      {confirmOpen && typeof document !== "undefined" && createPortal((
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" role="presentation" data-delete-card-control onMouseDown={() => !deleting && setConfirmOpen(false)}>
           <div role="dialog" aria-modal="true" aria-labelledby={`delete-title-${cardId}`} className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl" data-delete-card-control onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
@@ -55,7 +56,7 @@ export function DeleteCardButton({ cardId, visible = true, onDeleted }: {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
