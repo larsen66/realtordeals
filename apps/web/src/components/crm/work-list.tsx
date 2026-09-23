@@ -12,7 +12,7 @@ export async function WorkList({ params, reminders = false }: {
   const title = reminders ? "Напоминания" : "Задачи";
   let cards;
   try { ({ cards } = await listCards()); }
-  catch { return <main className="p-6"><h1 className="text-2xl font-semibold">{title}</h1><p role="alert" className="mt-4 text-sm text-destructive">Не удалось загрузить задачи. Проверьте подключение и обновите страницу.</p></main>; }
+  catch { return <main className="space-y-6 p-4 md:p-6"><header><h1 className="text-2xl font-semibold">{title}</h1><p className="mt-1 text-sm text-muted-foreground">{reminders ? "Обещанные звонки и задачи со сроком" : "Подбор вариантов, показы, ипотека и работа с клиентами"}</p></header><div className="flex flex-wrap items-center gap-3"><PersonalTasks /><p role="alert" className="text-sm text-destructive">Не удалось загрузить задачи клиентов. Личная задача доступна.</p></div></main>; }
   const rawTab = firstParam(params.tab);
   const tab = isTaskTab(rawTab) ? rawTab : "all";
   const query = firstParam(params.q) ?? "";
