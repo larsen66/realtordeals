@@ -3,6 +3,7 @@ import { firstParam, listCards } from "@/lib/cards";
 import { filterTasks, isTaskTab, taskTabs, tasksFromCards } from "@/lib/tasks";
 import { TaskTable } from "./task-table";
 import { TaskComposer } from "./task-composer";
+import { PersonalTasks } from "./personal-tasks";
 
 export async function WorkList({ params, reminders = false }: {
   params: Record<string, string | string[] | undefined>; reminders?: boolean;
@@ -20,7 +21,10 @@ export async function WorkList({ params, reminders = false }: {
   const tabs = reminders ? taskTabs.filter((item) => ["all", "today", "overdue", "call", "completed"].includes(item.id)) : taskTabs;
   return <main className="space-y-6 p-4 md:p-6">
     <header><h1 className="text-2xl font-semibold tracking-tight">{title}</h1><p className="mt-1 text-sm text-muted-foreground">{reminders ? "Обещанные звонки и задачи со сроком" : "Подбор вариантов, показы, ипотека и работа с клиентами"}</p></header>
-    <TaskComposer cards={cards.map(({ id, name, phone, role }) => ({ id, name, phone, role }))} />
+    <div className="flex flex-wrap items-center gap-3">
+      <TaskComposer cards={cards.map(({ id, name, phone, role }) => ({ id, name, phone, role }))} />
+      {!reminders && <PersonalTasks />}
+    </div>
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <form action={path} className="flex flex-wrap items-end gap-3 border-b p-5">
         <input type="hidden" name="tab" value={tab} />
