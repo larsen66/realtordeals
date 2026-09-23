@@ -56,7 +56,7 @@ export function PersonalTasks() {
     <>
       <Button type="button" variant="outline" onClick={() => setOpen(true)}>
         <ListTodo aria-hidden="true" />
-        Личные задачи
+        + Личная задача
         {activeTasks.length > 0 && <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-xs">{activeTasks.length}</span>}
       </Button>
 
