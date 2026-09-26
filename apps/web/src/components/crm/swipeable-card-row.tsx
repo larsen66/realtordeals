@@ -77,7 +77,7 @@ export function SwipeableCardRow({
     >
       {children}
       <td className="sticky right-0 z-10 w-0 bg-card p-0 align-middle">
-        <DeleteCardButton cardId={cardId} visible={offset < 0} onDeleted={() => setDeleted(true)} />
+        <DeleteCardButton cardId={cardId} onDeleted={() => setDeleted(true)} />
       </td>
     </tr>
   );
