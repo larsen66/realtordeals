@@ -2,7 +2,7 @@
 
 import {
   Bell,
-  Banknote,
+  WalletCards,
   Building2,
   Eye,
   Handshake,
@@ -81,11 +81,11 @@ export function Sidebar({
       label: "Сделки",
       icon: Handshake,
     },
-      {
-        href: "/crm/expected-income",
-        label: "Ожидаемые доходы",
-        icon: Banknote,
-      },
+    {
+      href: "/crm/finances",
+      label: "Доходы и сделки",
+      icon: WalletCards,
+    },
   ];
 
   return (
